@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fae0b4"/><stop offset="1" stop-color="#fbe0ca"/></linearGradient>
+<filter id="wash" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="4"/><feDisplacementMap in="SourceGraphic" scale="60"/><feGaussianBlur stdDeviation="16"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0.09 0"/></filter>
+</defs>
+<rect width="640" height="360" fill="url(#sky)"/>
+<circle cx="486" cy="149" r="50" fill="#f7c573" opacity="0.85" filter="url(#soft)"/>
+<g filter="url(#wash)"><ellipse cx="316" cy="173" rx="123" ry="62" fill="#f2a627" opacity="0.51"/><ellipse cx="264" cy="62" rx="150" ry="99" fill="#f19143" opacity="0.51"/><ellipse cx="94" cy="204" rx="104" ry="89" fill="#f69023" opacity="0.51"/><ellipse cx="81" cy="184" rx="105" ry="61" fill="#f7c97e" opacity="0.51"/><ellipse cx="427" cy="214" rx="131" ry="76" fill="#f2a627" opacity="0.51"/><ellipse cx="85" cy="85" rx="122" ry="86" fill="#f19143" opacity="0.51"/><ellipse cx="336" cy="46" rx="148" ry="88" fill="#f69023" opacity="0.51"/><ellipse cx="432" cy="169" rx="144" ry="41" fill="#f7c97e" opacity="0.51"/></g>
+<g filter="url(#wash)"><polygon points="-20,380 -20,221 50,221 120,230 190,229 260,230 330,231 400,228 470,231 540,227 610,229 680,243 680,380" fill="#a3732a" opacity="0.55"/><polygon points="-20,380 -20,284 50,266 120,282 190,290 260,276 330,274 400,279 470,287 540,275 610,276 680,282 680,380" fill="#bb7c31" opacity="0.70"/><polygon points="-20,380 -20,298 50,321 120,299 190,294 260,320 330,298 400,295 470,295 540,319 610,307 680,314 680,380" fill="#d28539" opacity="0.85"/></g>
+<rect width="640" height="360" filter="url(#paper)"/>
+</svg>

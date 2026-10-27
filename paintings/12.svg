@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fcdbbf"/><stop offset="1" stop-color="#fcdac8"/></linearGradient>
+<filter id="wash" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="12"/><feDisplacementMap in="SourceGraphic" scale="60"/><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="15"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0.09 0"/></filter>
+</defs>
+<rect width="640" height="360" fill="url(#sky)"/>
+<circle cx="274" cy="125" r="62" fill="#f8af6f" opacity="0.85" filter="url(#soft)"/>
+<g filter="url(#wash)"><ellipse cx="384" cy="72" rx="84" ry="45" fill="#f58321" opacity="0.58"/><ellipse cx="317" cy="113" rx="163" ry="58" fill="#f37a3b" opacity="0.58"/><ellipse cx="241" cy="92" rx="148" ry="78" fill="#f26b1f" opacity="0.58"/><ellipse cx="395" cy="37" rx="133" ry="57" fill="#f9b57a" opacity="0.58"/><ellipse cx="413" cy="104" rx="153" ry="90" fill="#f58321" opacity="0.58"/><ellipse cx="216" cy="62" rx="127" ry="83" fill="#f37a3b" opacity="0.58"/><ellipse cx="288" cy="31" rx="109" ry="80" fill="#f26b1f" opacity="0.58"/><ellipse cx="384" cy="115" rx="138" ry="84" fill="#f9b57a" opacity="0.58"/><ellipse cx="202" cy="161" rx="153" ry="60" fill="#f58321" opacity="0.58"/></g>
+<g filter="url(#wash)"><polygon points="-20,380 -20,201 50,186 120,185 190,204 260,194 330,207 400,184 470,192 540,184 610,209 680,208 680,380" fill="#ae6125" opacity="0.55"/><polygon points="-20,380 -20,235 50,249 120,222 190,222 260,225 330,224 400,223 470,241 540,222 610,245 680,227 680,380" fill="#c2682c" opacity="0.70"/><polygon points="-20,380 -20,249 50,257 120,250 190,263 260,252 330,251 400,261 470,258 540,250 610,261 680,255 680,380" fill="#d77032" opacity="0.85"/></g>
+<rect width="640" height="360" filter="url(#paper)"/>
+</svg>

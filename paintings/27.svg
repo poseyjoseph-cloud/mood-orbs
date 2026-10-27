@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9290e8"/><stop offset="1" stop-color="#cdcef5"/></linearGradient>
+<filter id="wash" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="27"/><feDisplacementMap in="SourceGraphic" scale="60"/><feGaussianBlur stdDeviation="13"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="30"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0.09 0"/></filter>
+</defs>
+<rect width="640" height="360" fill="url(#sky)"/>
+
+<g filter="url(#wash)"><ellipse cx="320" cy="132" rx="122" ry="71" fill="#4d4ad9" opacity="0.61"/><ellipse cx="541" cy="196" rx="169" ry="83" fill="#4d51da" opacity="0.61"/><ellipse cx="91" cy="53" rx="167" ry="97" fill="#3768e4" opacity="0.61"/><ellipse cx="209" cy="144" rx="165" ry="76" fill="#9492e8" opacity="0.61"/><ellipse cx="428" cy="35" rx="113" ry="76" fill="#4d4ad9" opacity="0.61"/><ellipse cx="401" cy="63" rx="134" ry="73" fill="#4d51da" opacity="0.61"/><ellipse cx="88" cy="125" rx="162" ry="98" fill="#3768e4" opacity="0.61"/><ellipse cx="259" cy="186" rx="150" ry="66" fill="#9492e8" opacity="0.61"/><ellipse cx="343" cy="147" rx="168" ry="80" fill="#4d4ad9" opacity="0.61"/></g>
+<g filter="url(#wash)"><polygon points="-20,380 -20,190 50,191 120,191 190,209 260,208 330,208 400,214 470,205 540,188 610,205 680,188 680,380" fill="#32307f" opacity="0.55"/><polygon points="-20,380 -20,232 50,238 120,233 190,241 260,252 330,232 400,259 470,247 540,232 610,247 680,259 680,380" fill="#3a3a9a" opacity="0.70"/><polygon points="-20,380 -20,289 50,287 120,277 190,266 260,275 330,277 400,266 470,280 540,294 610,266 680,266 680,380" fill="#4244b6" opacity="0.85"/></g>
+<rect width="640" height="360" filter="url(#paper)"/>
+</svg>

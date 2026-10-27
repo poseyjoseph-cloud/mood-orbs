@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fcdac3"/><stop offset="1" stop-color="#f0d9cd"/></linearGradient>
+<filter id="wash" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="54"/><feDisplacementMap in="SourceGraphic" scale="60"/><feGaussianBlur stdDeviation="12"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="57"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0.09 0"/></filter>
+</defs>
+<rect width="640" height="360" fill="url(#sky)"/>
+<circle cx="438" cy="125" r="66" fill="#f8a76e" opacity="0.85" filter="url(#soft)"/>
+<g filter="url(#wash)"><ellipse cx="451" cy="150" rx="154" ry="89" fill="#f47720" opacity="0.65"/><ellipse cx="274" cy="34" rx="133" ry="67" fill="#cb774e" opacity="0.65"/><ellipse cx="548" cy="170" rx="71" ry="87" fill="#f79824" opacity="0.65"/><ellipse cx="595" cy="37" rx="102" ry="53" fill="#f8ae79" opacity="0.65"/><ellipse cx="554" cy="89" rx="91" ry="81" fill="#f47720" opacity="0.65"/><ellipse cx="93" cy="71" rx="169" ry="45" fill="#cb774e" opacity="0.65"/><ellipse cx="323" cy="156" rx="163" ry="56" fill="#f79824" opacity="0.65"/><ellipse cx="364" cy="186" rx="111" ry="50" fill="#f8ae79" opacity="0.65"/><ellipse cx="489" cy="148" rx="94" ry="84" fill="#f47720" opacity="0.65"/><ellipse cx="197" cy="39" rx="169" ry="63" fill="#cb774e" opacity="0.65"/></g>
+<g filter="url(#wash)"><polygon points="-20,380 -20,239 50,228 120,231 190,250 260,238 330,247 400,230 470,237 540,237 610,235 680,237 680,380" fill="#af5a24" opacity="0.55"/><polygon points="-20,380 -20,267 50,257 120,254 190,257 260,278 330,261 400,281 470,272 540,278 610,277 680,267 680,380" fill="#b86331" opacity="0.70"/><polygon points="-20,380 -20,298 50,299 120,323 190,317 260,308 330,298 400,321 470,323 540,300 610,303 680,302 680,380" fill="#c06b3d" opacity="0.85"/></g>
+<rect width="640" height="360" filter="url(#paper)"/>
+</svg>

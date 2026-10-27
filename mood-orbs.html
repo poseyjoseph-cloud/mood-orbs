@@ -1,0 +1,3053 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Mood Orbs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3CradialGradient id='g' cx='.4' cy='.36' r='.7'%3E%3Cstop offset='0' stop-color='%23fff6dc'/%3E%3Cstop offset='.45' stop-color='%23f4a62a'/%3E%3Cstop offset='1' stop-color='%23b8530e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='13' fill='url(%23g)'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #1d2230;
+    --ink-2: rgba(29, 34, 48, .68);
+    --ink-3: rgba(29, 34, 48, .46);
+    --line: rgba(29, 34, 48, .09);
+    --chip: rgba(29, 34, 48, .06);
+    --glass: rgba(255, 255, 255, .74);
+    --lift: 0 12px 34px rgba(36, 44, 78, .11), 0 2px 8px rgba(36, 44, 78, .06);
+    --edge: inset 0 0 0 1px rgba(255, 255, 255, .85), 0 0 0 1px rgba(29, 34, 48, .07);
+    --ease: cubic-bezier(.45, 0, .2, 1);
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --key: linear-gradient(90deg, #5c38cc, #2a8fe0, #38b3ab, #e0b838, #f26b1f);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%; margin: 0; overflow: hidden;
+    background: #fff; color: var(--ink);
+    font: 14px/1.4 var(--sans);
+    -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+  }
+  button { font: inherit; color: inherit; }
+  svg.i { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  #scene {
+    position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+    touch-action: none; outline: none; cursor: grab;
+  }
+  #scene.hot { cursor: pointer; }
+  #scene.dragging { cursor: grabbing; }
+  body.flying #scene { cursor: crosshair; }
+  body.flying.locked #scene { cursor: none; }
+
+  /* ---- search: a pill that grows into a card ---- */
+  .finder {
+    position: fixed; z-index: 10; left: 50%; top: max(16px, env(safe-area-inset-top));
+    width: min(300px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    border-radius: 22px;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: var(--lift), var(--edge);
+    transition: width .45s var(--ease), opacity .45s var(--ease), background .45s var(--ease), box-shadow .3s var(--ease);
+  }
+  .finder.wide { width: min(360px, calc(100vw - 32px)); }
+  .finder.open { width: min(600px, calc(100vw - 24px)); background: rgba(255, 255, 255, .84); }
+  body.flying .finder { opacity: 0; pointer-events: none; }
+  .pill { display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 10px 0 16px; cursor: text; }
+  .pill svg { color: var(--ink-3); }
+  .pill input {
+    flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent;
+    font: 15px/1 var(--sans); color: var(--ink);
+  }
+  .pill input::placeholder { color: var(--ink-3); }
+  .pill input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+  .clear {
+    flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+    border: 0; border-radius: 50%; background: transparent; color: var(--ink-3); cursor: pointer;
+    opacity: 0; pointer-events: none; transition: opacity .25s var(--ease), background .2s var(--ease);
+  }
+  .clear svg.i { width: 15px; height: 15px; }
+  .clear:hover { background: var(--chip); color: var(--ink); }
+  .finder.has-text .clear { opacity: 1; pointer-events: auto; }
+  .drawer { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s var(--ease); }
+  .finder.open .drawer { grid-template-rows: 1fr; }
+  .drawer-in { min-height: 0; overflow: hidden; }
+  .drawer-note { margin: 0; padding: 9px 18px 0; font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--line); }
+  .drawer-note:empty { display: none; }
+  .results {
+    list-style: none; margin: 0; padding: 6px 6px 8px;
+    max-height: calc(100dvh - 150px); overflow-y: auto; overscroll-behavior: contain;
+    border-top: 1px solid var(--line);
+  }
+  .drawer-note:not(:empty) + .results { border-top: 0; }
+  .res {
+    display: flex; gap: 11px; align-items: flex-start;
+    padding: 8px 10px 9px; border-radius: 14px; cursor: pointer;
+    transition: background .2s var(--ease);
+  }
+  .res:hover { background: rgba(29, 34, 48, .04); }
+  .res.on { background: rgba(29, 34, 48, .065); }
+  .mood-dot {
+    flex: none; width: 11px; height: 11px; margin-top: 4px; border-radius: 50%;
+    background: radial-gradient(circle at 36% 32%, rgba(255, 255, 255, .75) 0 16%, transparent 46%), var(--c);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 16%, transparent);
+  }
+  .res-main { flex: 1; min-width: 0; }
+  .res-top { display: flex; gap: 9px; align-items: baseline; min-width: 0; }
+  .res-date { flex: none; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .res-gist { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+  .res-sub { display: flex; flex-wrap: wrap; gap: 4px 5px; align-items: center; margin-top: 5px; }
+  .chip {
+    display: inline-block; padding: 2px 8px; border-radius: 99px;
+    background: var(--chip); color: var(--ink-2);
+    font-size: 11.5px; line-height: 16px; white-space: nowrap;
+  }
+  .why { margin-left: 3px; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---- small titles that float above an orb ---- */
+  .tip {
+    position: fixed; left: 0; top: 0; z-index: 6; width: 0; height: 0;
+    pointer-events: none; opacity: 0; transition: opacity .3s var(--ease);
+  }
+  .tip.show { opacity: 1; }
+  .tip-in {
+    position: absolute; left: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    transform: translate(-50%, 5px); transition: transform .4s var(--ease);
+  }
+  .tip.show .tip-in { transform: translate(-50%, 0); }
+  .tip-title {
+    padding: 5px 11px; border-radius: 99px; white-space: nowrap;
+    background: rgba(255, 255, 255, .86);
+    -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%);
+    box-shadow: 0 4px 16px rgba(36, 44, 78, .12), var(--edge);
+    font: 500 12.5px/1.25 var(--sans); color: var(--ink);
+  }
+  .tip-chips { display: flex; gap: 4px; }
+  .tip-chips:empty { display: none; }
+  .tip-chips .chip { background: rgba(255, 255, 255, .84); box-shadow: 0 0 0 1px rgba(29, 34, 48, .07); }
+
+  /* ---- the quiet bar at the bottom ---- */
+  .bar {
+    position: fixed; z-index: 10; left: 50%; bottom: max(16px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 2px; padding: 5px;
+    max-width: calc(100vw - 20px);
+    border-radius: 99px;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: var(--lift), var(--edge);
+  }
+  .bar button {
+    display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px;
+    border: 0; border-radius: 99px; background: transparent; color: var(--ink-2);
+    font-size: 13px; white-space: nowrap; cursor: pointer;
+    transition: background .25s var(--ease), color .25s var(--ease);
+  }
+  .bar button:hover { background: rgba(29, 34, 48, .06); color: var(--ink); }
+  .bar button:focus-visible, .res:focus-visible, .rel:focus-visible, .card-x:focus-visible {
+    outline: 2px solid rgba(60, 110, 230, .45); outline-offset: 1px;
+  }
+  .pill input:focus-visible { outline: none; }
+  .finder:focus-within { box-shadow: var(--lift), var(--edge), 0 0 0 3px rgba(60, 110, 230, .14); }
+  .bar .alt { display: none; }
+  .bar.out #btnSpread .alt { display: block; }
+  .bar.out #btnSpread .main { display: none; }
+  .bar.muted #btnSound .main { display: none; }
+  .bar.muted #btnSound .alt { display: block; }
+  .drone-wrap { display: grid; grid-template-columns: 0fr; opacity: 0; transition: grid-template-columns .45s var(--ease), opacity .35s var(--ease); }
+  .drone-wrap > div { min-width: 0; overflow: hidden; }
+  .drone-wrap.show { grid-template-columns: 1fr; opacity: 1; }
+  .sep { flex: none; width: 1px; height: 18px; margin: 0 5px; background: var(--line); }
+  .key { display: flex; align-items: center; gap: 7px; padding: 0 12px 0 6px; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .key i { display: block; width: 64px; height: 6px; border-radius: 99px; background: var(--key); }
+
+  /* ---- drone ---- */
+  .drone-dot {
+    position: fixed; left: 50%; top: 50%; z-index: 8; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: rgba(29, 34, 48, .6); box-shadow: 0 0 0 2px rgba(255, 255, 255, .9);
+    opacity: 0; transition: opacity .4s var(--ease); pointer-events: none;
+  }
+  body.flying .drone-dot { opacity: 1; }
+  .hint {
+    position: fixed; z-index: 9; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 58px);
+    max-width: calc(100vw - 32px); transform: translateX(-50%);
+    padding: 8px 15px; border-radius: 99px;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+    box-shadow: var(--lift), var(--edge);
+    font-size: 12.5px; color: var(--ink-2); text-align: center;
+    opacity: 0; transition: opacity .5s var(--ease); pointer-events: none;
+  }
+  .hint.show { opacity: 1; }
+
+  /* ---- the open morning: a liquid-glass card ---- */
+  .veil {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(248, 249, 253, .16);
+    opacity: 0; pointer-events: none; transition: opacity .5s var(--ease);
+  }
+  .veil.show { opacity: 1; pointer-events: auto; }
+  .card, .card-shadow { position: fixed; left: 0; top: 0; width: 0; height: 0; border-radius: 28px; }   /* placed and sized from script */
+  .card-shadow { z-index: 21; box-shadow: 0 34px 90px rgba(36, 44, 78, .20), 0 8px 26px rgba(36, 44, 78, .10); opacity: 0; pointer-events: none; }
+  .card {
+    z-index: 22; overflow: hidden;
+    background: linear-gradient(155deg, rgba(255, 255, 255, .70), rgba(255, 255, 255, .46));
+    -webkit-backdrop-filter: blur(28px) saturate(190%); backdrop-filter: blur(28px) saturate(190%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .95),
+      inset 0 0 0 1px rgba(255, 255, 255, .62),
+      inset 0 -1px 0 rgba(255, 255, 255, .4),
+      inset 0 0 44px rgba(255, 255, 255, .22);
+    outline: none;
+  }
+  .card[hidden], .card-shadow[hidden] { display: none; }
+  .card::before {                     /* a soft sheen across the glass */
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+    background:
+      radial-gradient(120% 70% at 10% -12%, rgba(255, 255, 255, .7), transparent 52%),
+      radial-gradient(90% 60% at 104% 112%, rgba(255, 255, 255, .3), transparent 60%);
+  }
+  .card-skin {                        /* the orb itself, for the moment it grows and shrinks: a glowing world in clear glass */
+    position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+    background:
+      radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .55) 0 6%, transparent 20%),
+      radial-gradient(circle at 50% 52%, var(--lite) 0%, var(--c) 34%, color-mix(in srgb, var(--c) 46%, transparent) 66%, color-mix(in srgb, var(--c) 30%, transparent) 100%);
+  }
+  .card-inner {                       /* the content keeps its final size while the glass grows around it */
+    position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 1;
+    display: flex; flex-direction: column;
+  }
+  .card-x {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+    border: 0; border-radius: 50%; cursor: pointer; color: var(--ink-2);
+    background: rgba(255, 255, 255, .72);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    box-shadow: 0 0 0 1px rgba(29, 34, 48, .08), 0 2px 10px rgba(36, 44, 78, .10);
+    transition: background .2s var(--ease), color .2s var(--ease);
+  }
+  .card-x:hover { background: #fff; color: var(--ink); }
+  .card-scroll { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px 22px 18px; }
+  .card-img {
+    display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+    border-radius: 18px; background: rgba(29, 34, 48, .05);
+    box-shadow: 0 8px 24px rgba(36, 44, 78, .14);
+  }
+  .card-when { margin: 16px 0 3px; font-size: 12.5px; color: var(--ink-3); }
+  .card-title { margin: 0; font: 600 21px/1.25 var(--sans); letter-spacing: -.005em; }
+  .card-gist { margin: 7px 0 0; font-size: 15.5px; line-height: 1.5; }
+  .card-text {
+    margin: 12px 0 0; max-height: 240px; overflow-y: auto; padding-right: 6px;
+    white-space: pre-wrap; font: 15px/1.6 var(--serif); color: var(--ink-2);
+  }
+  .card-quote {
+    margin: 13px 0 0; padding: 1px 0 1px 14px; border-left: 3px solid var(--c);
+    font: italic 16.5px/1.5 var(--serif); color: var(--ink-2);
+  }
+  .card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .card-chips .chip { font-size: 12px; padding: 3px 10px; background: rgba(255, 255, 255, .6); box-shadow: 0 0 0 1px rgba(29, 34, 48, .08); }
+  .related { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .related h3 { margin: 0 0 6px 2px; font: 600 13px/1.2 var(--sans); color: var(--ink-2); }
+  .related ul { list-style: none; margin: 0; padding: 0; }
+  .rel {
+    display: flex; gap: 12px; align-items: center; width: 100%; padding: 7px 8px;
+    border: 0; border-radius: 14px; background: transparent; text-align: left; cursor: pointer;
+    transition: background .2s var(--ease);
+  }
+  .rel:hover { background: rgba(255, 255, 255, .62); }
+  .rel img { flex: none; width: 64px; height: 36px; object-fit: cover; border-radius: 8px; background: rgba(29, 34, 48, .06); box-shadow: 0 2px 8px rgba(36, 44, 78, .12); }
+  .rel-main { min-width: 0; flex: 1; }
+  .rel-top { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  .rel-date { font-size: 13px; font-weight: 600; margin-right: 2px; }
+  .rel .chip { font-size: 11px; padding: 1px 7px; }
+  .rel-why { display: block; margin-top: 3px; font-size: 12.5px; color: var(--ink-3); }
+
+  .problem {
+    position: fixed; inset: 0; z-index: 50; display: none; place-items: center;
+    padding: 24px; text-align: center; font-size: 15px; color: var(--ink-2); background: #fff;
+  }
+  .problem.show { display: grid; }
+
+  @media (max-width: 560px) {
+    .bar button { padding: 0 10px; gap: 6px; }
+    .bar .long { display: none; }
+    .key { padding: 0 9px 0 4px; gap: 5px; }
+    .key i { width: 40px; }
+    .card-scroll { padding: 16px 16px 14px; }
+    .card-title { font-size: 19px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .finder, .drawer, .tip, .tip-in, .veil, .hint, .drone-wrap, .res, .rel { transition-duration: .2s !important; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  },
+  "integrity": {
+    "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js": "sha384-61S/Nu32S3E5+n+KpCOTb2eRYps6fVKm+9Gz1QBvSePFthb46f063Aa/qe/lykFZ",
+    "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js": "sha384-qlO/ZugKPxAQUAvTlQoo0QECzxJIJySZmCF/DHdb2Xn/hHndFwX/vfUAC9Hbk6LP"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="scene" role="img" aria-label="Your mornings as glowing glass orbs"></canvas>
+
+<div class="finder" id="finder">
+  <label class="pill">
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+    <input id="q" type="search" placeholder="Search your mornings" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Search your mornings" aria-controls="results" aria-expanded="false">
+    <button class="clear" id="clear" type="button" aria-label="Clear the search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+  </label>
+  <div class="drawer"><div class="drawer-in">
+    <p class="drawer-note" id="note"></p>
+    <ul class="results" id="results" role="listbox" aria-label="Mornings that match"></ul>
+  </div></div>
+</div>
+
+<div class="tip" id="tipHover"><div class="tip-in"><span class="tip-title"></span><span class="tip-chips"></span></div></div>
+<div class="tip" id="tipFocus"><div class="tip-in"><span class="tip-title"></span><span class="tip-chips"></span></div></div>
+
+<nav class="bar" id="bar" aria-label="View">
+  <button id="btnSpread" type="button">
+    <svg class="i main" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><circle cx="5" cy="6" r="1.5"/><circle cx="19" cy="6.5" r="1.5"/><circle cx="4.6" cy="17.4" r="1.5"/><circle cx="18.6" cy="18" r="1.5"/></svg>
+    <svg class="i alt" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10.2" r="2.7"/><circle cx="14.6" cy="11.4" r="2.7"/><circle cx="11.6" cy="15" r="2.7"/><circle cx="12" cy="12" r="8.6" stroke-dasharray="2 3.2"/></svg>
+    <span id="spreadWord">Explode</span>
+  </button>
+  <div class="drone-wrap" id="droneWrap"><div>
+    <button id="btnDrone" type="button" tabindex="-1">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.4 20.4 4.2l-6.6 16.1-2.6-6.4z"/><path d="m11.2 13.9 3.9-3.9"/></svg>
+      <span id="droneWord">Drone</span>
+    </button>
+  </div></div>
+  <button id="btnReset" type="button">
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 12a7.4 7.4 0 1 0 2.3-5.4"/><path d="M4.4 4.6v3.5h3.5"/></svg>
+    <span>Reset<span class="long"> view</span></span>
+  </button>
+  <button id="btnSound" type="button" aria-pressed="true" aria-label="Sound">
+    <svg class="i main" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5h3l4.2-3.6v12.2L7.5 14.5h-3z"/><path d="M15.2 9.2a4 4 0 0 1 0 5.6"/><path d="M17.8 6.8a7.4 7.4 0 0 1 0 10.4"/></svg>
+    <svg class="i alt" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5h3l4.2-3.6v12.2L7.5 14.5h-3z"/><path d="m15.6 9.6 4.8 4.8m0-4.8-4.8 4.8"/></svg>
+    <span class="long" id="soundWord">Sound on</span>
+  </button>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="key" role="img" aria-label="Colour key: painful mornings are blue and violet, joyful mornings are gold and amber"><span>painful</span><i></i><span>joyful</span></div>
+</nav>
+
+<div class="drone-dot" aria-hidden="true"></div>
+<div class="hint" id="hint" role="status" aria-live="polite"></div>
+
+<div class="veil" id="veil"></div>
+<div class="card-shadow" id="cardShadow" hidden></div>
+<article class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle" tabindex="-1" hidden>
+  <div class="card-skin" id="cardSkin"></div>
+  <div class="card-inner" id="cardInner">
+  <button class="card-x" id="cardX" type="button" aria-label="Close"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+  <div class="card-scroll" id="cardScroll">
+    <div class="card-body" id="cardBody">
+      <img class="card-img" id="cardImg" alt="" decoding="async">
+      <p class="card-when" id="cardWhen"></p>
+      <h2 class="card-title" id="cardTitle"></h2>
+      <p class="card-gist" id="cardGist"></p>
+      <div class="card-text" id="cardText" hidden></div>
+      <blockquote class="card-quote" id="cardQuote"></blockquote>
+      <div class="card-chips" id="cardChips"></div>
+      <section class="related">
+        <h3>Related mornings</h3>
+        <ul id="relList"></ul>
+      </section>
+    </div>
+  </div>
+  </div>
+</article>
+
+<div class="problem" id="problem">The orbs could not load their drawing tools. Please check your internet connection, then reload this page.</div>
+
+<script src="entries.js"></script>
+<script src="lexicon.js"></script>
+<script>
+  // If the drawing tools never arrive (offline), say so plainly instead of leaving a blank page.
+  setTimeout(function () { if (!window.__orbsReady) document.getElementById('problem').classList.add('show'); }, 9000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = s => document.querySelector(s);
+function showProblem(msg) { const p = $('#problem'); p.textContent = msg; p.classList.add('show'); }
+
+const ENTRIES = window.ENTRIES;
+const TAG_NAMES = window.TAG_NAMES || {};
+const LEX = window.LEXICON || { themes: {}, leans: {} };
+if (!Array.isArray(ENTRIES) || !ENTRIES.length) {
+  showProblem('The mornings file (entries.js) was not found next to this page.');
+  throw new Error('entries.js is missing');
+}
+
+/* ---------- small helpers ---------- */
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const damp = (cur, goal, rate, dt) => cur + (goal - cur) * (1 - Math.exp(-rate * dt));
+function seeded(seed) {                       // tiny repeatable random numbers
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), a | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function spring(s, goal, omega, dt) {        // critically damped: arrives without wobble
+  const f = 1 + 2 * dt * omega, oo = omega * omega, hoo = dt * oo, hhoo = dt * hoo, inv = 1 / (f + hhoo);
+  const x = (f * s.x + dt * s.v + hhoo * goal) * inv;
+  s.v = (s.v + hoo * (goal - s.x)) * inv;
+  s.x = x;
+}
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+let calm = motionQuery.matches;              // gentler motion for anyone who asks for it
+motionQuery.addEventListener?.('change', e => { calm = e.matches; });
+const T = ms => ms * (calm ? 0.55 : 1);      // every move is shorter when motion is reduced
+const touchOnly = matchMedia('(pointer: coarse)');   // phones and tablets: no drone
+const EASE = 'cubic-bezier(.45, 0, .2, 1)';
+
+/* ---------- sound: soft, warm and quiet, all made live with Web Audio (no sound files) ---------- */
+const sound = { ctx: null, bus: null, master: null, noise: null, bowls: null, on: true, contacts: 0, played: 0, lastList: 0, log: null };
+try { sound.on = localStorage.getItem('mood-orbs-sound') !== 'off'; } catch (err) { /* storage blocked: keep sound on */ }
+const loudness = () => 0.9 * (calm ? 0.55 : 1);  // reduced motion keeps the sounds, just quieter
+function makeNoise(ctx) {                         // half a second of soft noise, reused by every sound
+  const len = Math.floor(ctx.sampleRate * 0.5), buf = ctx.createBuffer(1, len, ctx.sampleRate), ch = buf.getChannelData(0), rnd = seeded(11);
+  for (let k = 0; k < len; k++) ch[k] = rnd() * 2 - 1;
+  return buf;
+}
+function startAudio() {                           // browsers only allow sound after the first click or key
+  if (sound.ctx) { if (sound.ctx.state === 'suspended') sound.ctx.resume().catch(() => {}); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try {
+    const ctx = new AC({ latencyHint: 'interactive' });
+    const bus = ctx.createGain();
+    const comp = ctx.createDynamicsCompressor();  // a gentle squeeze, so nothing ever stacks up loud
+    comp.threshold.value = -24; comp.knee.value = 18; comp.ratio.value = 3.5; comp.attack.value = 0.003; comp.release.value = 0.25;
+    const master = ctx.createGain();
+    master.gain.value = sound.on ? loudness() : 0;
+    bus.connect(comp).connect(master).connect(ctx.destination);
+    const bowls = makeBowls(ctx, master);         // the orbs' singing bowls have their own gentle squeeze and quiet room
+    sound.ctx = ctx; sound.bus = bus; sound.master = master; sound.noise = makeNoise(ctx); sound.bowls = bowls;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  } catch (err) { sound.ctx = null; }
+}
+addEventListener('pointerdown', startAudio, true);
+addEventListener('keydown', startAudio, true);
+motionQuery.addEventListener?.('change', () => {
+  if (sound.master && sound.on) sound.master.gain.setTargetAtTime(loudness(), sound.ctx.currentTime, 0.05);
+});
+
+// A talky tick: a tiny puff of breath through two mouth-like resonances whose pitch slides a little,
+// like a tongue click or a wooden blip. Press is a touch lower and duller, release higher and brighter.
+function voiceTick(ctx, dest, t, noise, o) {
+  const press = o.kind === 'press';
+  const p = (o.pitch || 1) * (1 + (o.jitter ?? (Math.random() - 0.5) * 0.1));
+  const len = (press ? 0.07 : 0.052) * (o.len || 1);
+  const glide = o.glide ?? -1;                    // -1 slides down like a click, +1 slides up
+  const out = ctx.createGain();
+  out.gain.value = (o.level ?? 1) * (press ? 0.34 : 0.28);
+  const tone = ctx.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.value = press ? 2300 : 4300;
+  tone.Q.value = 0.5;
+  let pan = null;
+  if (typeof o.pan === 'number') { pan = ctx.createStereoPanner(); pan.pan.value = clamp(o.pan, -1, 1); tone.connect(out).connect(pan).connect(dest); }
+  else tone.connect(out).connect(dest);
+  const puff = ctx.createBufferSource();
+  puff.buffer = noise;
+  const pg = ctx.createGain();
+  pg.gain.setValueAtTime(0, t);
+  pg.gain.linearRampToValueAtTime(1, t + 0.0008);
+  pg.gain.exponentialRampToValueAtTime(0.001, t + 0.004);
+  puff.connect(pg);
+  const forms = press ? [[560, 9, 1], [1050, 8, 0.5]] : [[720, 9, 0.85], [1800, 9, 0.7]];
+  for (const [f, q, g] of forms) {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = q;
+    bp.frequency.setValueAtTime(f * p * (1 - 0.14 * glide), t);
+    bp.frequency.exponentialRampToValueAtTime(f * p * (1 + 0.04 * glide), t + len * 0.6);
+    const gg = ctx.createGain();
+    gg.gain.value = g * q;                        // a narrow resonance needs a little lift
+    pg.connect(bp).connect(gg).connect(tone);
+  }
+  const knock = ctx.createOscillator();           // a soft knock of body underneath
+  knock.type = 'sine';
+  const kf = (press ? 190 : 265) * p;
+  knock.frequency.setValueAtTime(kf * (1 - 0.25 * glide), t);
+  knock.frequency.exponentialRampToValueAtTime(kf, t + len * 0.5);
+  const kg = ctx.createGain();
+  kg.gain.setValueAtTime(0, t);
+  kg.gain.linearRampToValueAtTime(press ? 0.22 : 0.12, t + 0.002);
+  kg.gain.exponentialRampToValueAtTime(0.001, t + len);
+  knock.connect(kg).connect(tone);
+  puff.start(t, Math.random() * 0.45);
+  puff.stop(t + 0.01);
+  knock.start(t);
+  knock.stop(t + len + 0.03);
+  knock.onended = () => { out.disconnect(); if (pan) pan.disconnect(); };
+}
+/* Two orbs touching sound like a singing bowl: the one picked from a set of trial sounds. A low, warm hum
+   that swells in and fades slowly, with the bowl's gentle waver, in a quiet room. Each pair's note comes from its mood. */
+const SCALE = [0, 2, 4, 7, 9];                    // D major pentatonic (D E F# A B): no two notes clash, so many touches make a chord
+const NOTES = 10;                                 // two octaves of it, from the heaviest morning to the brightest
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+function scaleHz(low, k) {                        // the k-th note of the scale, counting up from MIDI note `low`
+  const rel = low - 62, oct = Math.floor(rel / 12), d = SCALE.indexOf(rel - 12 * oct) + k;
+  return midiHz(62 + 12 * (oct + Math.floor(d / 5)) + SCALE[((d % 5) + 5) % 5]);
+}
+const noteOfMood = m => clamp(Math.round((m + 1) / 2 * (NOTES - 1)), 0, NOTES - 1);   // painful mornings low, joyful ones high
+// low: the lowest note (MIDI, the D below middle C) · hold: how long a touch keeps its voice · room: how much of the quiet
+// room it carries · cal: its level · crowd: how much softer each touch gets while others still ring, so a pour stays soft
+const BOWL = { low: 50, hold: 1.2, room: 0.15, cal: 0.156, crowd: 1.47 };
+const BOWL_LEVEL = Math.pow(10, -12 / 20) / 0.9;  // a gentle level, under this page's master
+const BOWLS = 8;                                  // the pool of voices: at most eight bowls ring at once
+const FADE = 0.3;                                 // a bowl that gives up its voice fades away over about a second, never cut
+function makeRoom(ctx, rnd) {                     // a quiet, dark room: about two seconds of softly fading air, wide in stereo
+  const sr = ctx.sampleRate, len = Math.floor(sr * 2.4), pre = Math.floor(sr * 0.014), buf = ctx.createBuffer(2, len, sr);
+  for (let c = 0; c < 2; c++) {
+    const ch = buf.getChannelData(c);
+    let y = 0, e = 0;
+    for (let n = pre; n < len; n++) {
+      const t = (n - pre) / sr;
+      y += (0.5 * Math.exp(-t / 0.35) + 0.06) * ((rnd() * 2 - 1) - y);   // the high end fades faster than the body
+      ch[n] = y * Math.exp(-t / 0.42) * Math.min(1, t / 0.008);
+      e += ch[n] * ch[n];
+    }
+    const k = 1 / Math.sqrt(e);                   // even energy, so the room never adds level by itself
+    for (let n = 0; n < len; n++) ch[n] *= k;
+  }
+  return buf;
+}
+function makeBowls(ctx, dest) {                   // the bowls' own path (live, or offline for measuring), into dest
+  const bus = ctx.createGain();
+  const comp = ctx.createDynamicsCompressor();    // a gentle squeeze, so nothing ever stacks up loud
+  comp.threshold.value = -10; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.3;
+  const level = ctx.createGain();
+  level.gain.value = BOWL_LEVEL;
+  const room = ctx.createConvolver();
+  room.normalize = false;
+  room.buffer = makeRoom(ctx, seeded(99));        // the same room every time
+  const roomIn = ctx.createGain();
+  const drift = ctx.createDelay(0.1), lfo = ctx.createOscillator(), depth = ctx.createGain();
+  drift.delayTime.value = 0.03;                   // the room drifts very slowly, so a long note can't cancel itself in it
+  lfo.frequency.value = 0.23; depth.gain.value = 0.004;
+  lfo.connect(depth).connect(drift.delayTime);
+  lfo.start();
+  bus.connect(comp);
+  roomIn.connect(drift).connect(room).connect(comp);
+  comp.connect(level).connect(dest);
+  const voices = Array.from({ length: BOWLS }, () => ({ free: 0, ring: null }));
+  return { ctx, bus, roomIn, voices, recent: [], starts: [], next: 0, dropped: 0 };
+}
+// One pair's touch. note: { k, bright } · v: 0 to 1, how fast they met · pan: -1 to 1 · t: when, on the audio clock
+function bowl(B, note, v, pan, t, rnd) {
+  while (B.recent.length && t - B.recent[0] > 0.1) B.recent.shift();
+  if (B.recent.length >= 6) { B.dropped++; return null; }   // at most about six new sounds every 100 ms
+  const at = Math.max(t, B.next);                 // bowls that meet at once roll in one after another: a soft cascade
+  let voice = null;                               // a free voice, the one whose bowl has rung the longest
+  for (const x of B.voices) if (x.free <= at && (!voice || x.free < voice.free)) voice = x;
+  if (!voice) { B.dropped++; return null; }       // every voice busy: drop it quietly
+  B.recent.push(t);
+  if (voice.ring && voice.ring.end > at) release(voice.ring, at);   // its old bowl is still ringing: it fades gently away
+  voice.free = at + BOWL.hold;
+  while (B.starts.length && at - B.starts[0] >= BOWL.hold) B.starts.shift();
+  const ringing = B.starts.length;                // bowls from the last moment, still swelling
+  B.starts.push(at);
+  v = clamp(v, 0, 1);
+  const ctx = B.ctx, o = {
+    t: at + rnd() * 0.005,                        // a few milliseconds of looseness
+    f: scaleHz(BOWL.low, note.k) * (1 + (rnd() - 0.5) * 0.003),   // within a couple of cents of the scale
+    tone: (0.9 + rnd() * 0.2) * (0.92 + 0.16 * (note.bright ?? 0.5)),   // more intense mornings sound a touch brighter
+    decay: 0.9 + rnd() * 0.2,
+  };
+  const level = BOWL.cal * (0.3 + 0.7 * Math.pow(v, 0.9))        // louder for a faster meeting, but always soft
+    * (0.91 + rnd() * 0.18) / Math.sqrt(1 + BOWL.crowd * ringing);   // while others still ring, each new one is softer
+  const out = ctx.createGain(), pn = ctx.createStereoPanner(), send = ctx.createGain();
+  out.gain.value = level;
+  pn.pan.value = clamp(pan, -1, 1);
+  send.gain.value = BOWL.room;
+  out.connect(pn).connect(B.bus);
+  out.connect(send).connect(B.roomIn);
+  const warm = ctx.createBiquadFilter();          // a firmer touch opens the top a little
+  warm.type = 'lowpass'; warm.frequency.value = (1300 + 1400 * v) * o.tone; warm.Q.value = 0.3;
+  warm.connect(out);
+  const ring = { out, level, srcs: [], t: o.t, end: 0, fade: Infinity }, rise = 0.1 + rnd() * 0.03;
+  // four ringing modes, each two sines a hair apart: their slow beating is the bowl's waver
+  for (const [m, a, tau, beat] of [[1, 1, 0.95, 1.8], [2.71, 0.34, 0.62, 3.0], [5.11, 0.11, 0.38, 4.2], [8.17, 0.035, 0.24, 5.4]]) {
+    const f = o.f * m * (m > 1 ? 1 + (rnd() - 0.5) * 0.006 : 1);
+    const lvl = a * (m > 1 ? 0.6 + 0.4 * v : 1);
+    const bt = beat * (0.8 + rnd() * 0.4);
+    swell(ring, warm, f - bt / 2, lvl * 0.66, o.t, rise, tau * o.decay);
+    swell(ring, warm, f + bt / 2, lvl * 0.34, o.t, rise * 1.15, tau * o.decay * 0.93);
+  }
+  const last = ring.srcs.reduce((p, q) => (q.stop > p.stop ? q : p));
+  last.osc.onended = () => { out.disconnect(); pn.disconnect(); send.disconnect(); };
+  voice.ring = ring;
+  B.next = at + 0.07 + rnd() * 0.03;              // the next bowl waits a moment, so a burst becomes a cascade
+  return ring;
+}
+function swell(ring, dest, f, a, t, rise, tau) {  // one mode that swells in instead of being struck, then dies away slowly
+  const ctx = dest.context, osc = ctx.createOscillator(), g = ctx.createGain(), stop = t + rise * 3 + tau * 8;
+  osc.frequency.value = f;
+  g.gain.setValueAtTime(0, t);
+  g.gain.setTargetAtTime(a, t, rise);
+  g.gain.setTargetAtTime(0, t + rise * 3, tau);
+  osc.connect(g).connect(dest);
+  osc.start(t);
+  osc.stop(stop);
+  ring.srcs.push({ osc, stop });
+  ring.end = Math.max(ring.end, stop);
+}
+function release(ring, t) {                       // a gentle fade from where the bowl is now, then it stops
+  const stop = t + FADE * 6;
+  ring.fade = t;
+  ring.out.gain.setValueAtTime(ring.level, t);
+  ring.out.gain.setTargetAtTime(0, t, FADE);
+  for (const s of ring.srcs) if (s.stop > stop) { s.stop = stop; try { s.osc.stop(stop); } catch (err) { /* already ending */ } }
+  ring.end = Math.min(ring.end, stop);
+}
+function hush(B, t) {                             // sound off: every bowl still ringing fades away, so none come back later
+  for (const x of B.voices) { if (x.ring && x.ring.end > t) release(x.ring, t); x.ring = null; x.free = 0; }
+  B.recent.length = 0; B.starts.length = 0; B.next = 0;
+}
+function tick(kind, o = {}) {
+  if (!sound.ctx || !sound.on) return;
+  voiceTick(sound.ctx, sound.bus, sound.ctx.currentTime + 0.002 + (o.delay || 0), sound.noise, { ...o, kind, pan: o.pan ?? 0 });
+}
+const panOf = node => { const r = node.getBoundingClientRect(); return clamp(((r.left + r.width / 2) / innerWidth) * 2 - 1, -1, 1) * 0.45; };
+function talky(node, pitch = 1, withRelease = true) {   // every control gets a press sound and a release sound
+  let pressed = false;
+  node.addEventListener('pointerdown', e => { if (e.button !== 0) return; pressed = true; tick('press', { pitch, pan: panOf(node) }); });
+  node.addEventListener('pointerup', () => { if (pressed && withRelease) tick('release', { pitch, pan: panOf(node) }); pressed = false; });
+  node.addEventListener('pointerleave', () => { pressed = false; });
+  node.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) tick('press', { pitch, pan: panOf(node) }); });
+  node.addEventListener('keyup', e => { if ((e.key === 'Enter' || e.key === ' ') && withRelease) tick('release', { pitch, pan: panOf(node) }); });
+}
+
+/* ---------- colour: painful → joyful, readable on white ---------- */
+const MOOD_STOPS = [
+  [-1.00, [0.37, 0.22, 0.80]],   // deep violet
+  [-0.62, [0.24, 0.35, 0.90]],   // blue
+  [-0.28, [0.15, 0.56, 0.88]],   // sky
+  [ 0.00, [0.16, 0.70, 0.66]],   // soft teal
+  [ 0.14, [0.50, 0.77, 0.40]],   // fresh green-gold, so the in-between never turns muddy
+  [ 0.28, [0.91, 0.74, 0.18]],   // warm gold
+  [ 0.62, [0.97, 0.60, 0.14]],   // amber gold
+  [ 1.00, [0.95, 0.42, 0.12]],   // deep amber
+];
+function moodColor(m) {
+  m = clamp(m, -1, 1);
+  for (let i = 1; i < MOOD_STOPS.length; i++) {
+    if (m <= MOOD_STOPS[i][0]) {
+      const [m0, c0] = MOOD_STOPS[i - 1], [m1, c1] = MOOD_STOPS[i];
+      const t = (m - m0) / (m1 - m0);
+      return [lerp(c0[0], c1[0], t), lerp(c0[1], c1[1], t), lerp(c0[2], c1[2], t)];
+    }
+  }
+  return MOOD_STOPS[MOOD_STOPS.length - 1][1].slice();
+}
+const toCss = c => 'rgb(' + c.map(v => Math.round(clamp(v, 0, 1) * 255)).join(' ') + ')';
+const mixRgb = (a, b, t) => a.map((v, k) => lerp(v, b[k], t));
+function rgbToHsl([r, g, b]) {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  if (mx === mn) return [0, 0, l];
+  const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+  const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+function hslToRgb([h, s, l]) {
+  if (!s) return [l, l, l];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return [f(h + 1 / 3), f(h), f(h - 1 / 3)];
+}
+const ROSE = [0.93, 0.36, 0.54], COOL = [0.30, 0.46, 0.86];
+function orbColor(e) {
+  const base = moodColor(e.mood);
+  const life = clamp(e.life || 0, -1, 1);
+  // personal mornings lean a little rosier, work mornings a little cooler (only the hue moves)
+  const tinted = life < 0 ? mixRgb(base, ROSE, -life * 0.16) : mixRgb(base, COOL, life * 0.10);
+  const [h] = rgbToHsl(tinted), [, s, l] = rgbToHsl(base);
+  let c = hslToRgb([h, s, l]);
+  if (e.note) c = mixRgb(c, [0.80, 0.82, 0.86], 0.22);   // lists and notes are a little quieter
+  return c;
+}
+
+/* ---------- the mornings ---------- */
+const sorted = ENTRIES.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.n - b.n));
+const N = sorted.length;
+
+function parseDate(s) {                         // "2026-09-17 04:46", read as local time
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : new Date(s);
+}
+const fmtTitle = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const fmtLong = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+const fmtRow = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+const fmtClock = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+const clockOf = d => fmtClock.format(d).replace(/\s*([AP])M$/i, (_, x) => ' ' + x.toLowerCase() + 'm');
+
+const tagLabel = k => TAG_NAMES[k] || k;
+const tagShort = k => tagLabel(k).split(' & ')[0];
+function prettyTheme(e) {                       // "low tide pottery" → "Low Tide Pottery" when the entry itself spells it that way
+  const t = String(e.theme || '').trim();
+  if (!t) return '';
+  const safe = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = new RegExp('\\b' + safe + '\\b', 'i').exec((e.gist || '') + ' ' + (e.quote || ''));
+  if (m && /[A-Z]/.test(m[0].slice(1))) return m[0][0].toUpperCase() + m[0].slice(1);
+  return t.replace(/\bai\b/g, 'AI').replace(/^./, c => c.toUpperCase());
+}
+const listWords = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
+
+// The world inside each orb: a deeper shade for its thick mist and a pale one for its light.
+// Painful worlds sink toward violet, joyful ones lift toward gold, so nothing turns brown or grey.
+function worldShades(col, mood) {
+  const [h, s, l] = rgbToHsl(col);
+  const joy = clamp(mood * 0.55 + 0.5, 0, 1);
+  const warm = h < 0.2 || h > 0.9;                      // gold and amber hues
+  const deep = hslToRgb([(h + (warm ? -0.012 : 0.018) + 1) % 1, Math.min(1, s * 1.08 + 0.06), l * lerp(0.5, 0.86, joy)]);
+  const lite = hslToRgb([(h + (warm ? 0.07 : -0.01) + 1) % 1, Math.min(1, s * 0.96 + 0.1), lerp(l, 0.95, warm ? 0.26 : lerp(0.4, 0.34, joy))]);
+  return { deep, lite };
+}
+
+const items = sorted.map((e, i) => {
+  const date = parseDate(e.date);
+  const col = orbColor(e);
+  const theme = prettyTheme(e);
+  const shades = worldShades(col, e.mood);
+  const seed = seeded(e.n * 40503 + 7);
+  return {
+    i, e, n: e.n, date, col, theme,
+    deepCol: shades.deep, liteCol: shades.lite,
+    world: [clamp(e.mood, -1, 1), clamp(e.intensity ?? 0.5, 0, 1), clamp(e.life || 0, -1, 1), clamp(e.time || 0, -1, 1)],
+    nest: [seed(), seed(), seed(), e.note ? 1 : 0],   // where this world sits in the shared noise, so no two look alike
+    css: toCss(col),
+    lite: toCss(mixRgb(col, [1, 1, 1], 0.5)),
+    deep: toCss(col.map(v => Math.pow(v, 1.85))),
+    glow: (0.26 + 0.74 * clamp(e.intensity ?? 0.5, 0, 1)) * (e.note ? 0.72 : 1),   // inner light, from intensity
+    tags: (e.tags || []).filter(Boolean),
+    title: fmtTitle.format(date) + (theme ? ' · ' + theme : ''),
+    phase: (i * 0.618034) % 1,
+    fade: { x: 1, v: 0 },
+    lift: 0,
+    scale: 1,
+  };
+});
+
+/* ---------- how close two mornings are: shared themes plus nearness on the three scales ---------- */
+function closeness(a, b) {
+  const A = items[a], B = items[b];
+  const shared = A.tags.filter(t => B.tags.includes(t)).length;
+  const tagPart = shared ? shared / Math.sqrt(A.tags.length * B.tags.length) : 0;
+  const dm = A.e.mood - B.e.mood, dt = A.e.time - B.e.time, dl = A.e.life - B.e.life;
+  const far = Math.sqrt(1.6 * dm * dm + dt * dt + dl * dl) / Math.sqrt(1.6 * 4 + 4 + 4);
+  return 0.58 * tagPart + 0.42 * (1 - far);
+}
+const nearest = items.map((_, a) => items
+  .map((__, b) => ({ b, s: b === a ? -1 : closeness(a, b) }))
+  .filter(r => r.b !== a)
+  .sort((x, y) => y.s - x.s));
+
+/* ---------- physics: a ball of orbs that settles, then truly rests ---------- */
+const R = 0.1;                    // every orb is the same size
+const GAP = 2 * R * 1.004;        // centre-to-centre distance when two orbs touch (a hair of room)
+const H = 1 / 120;                // physics step, seconds
+const HOME = 14;                  // each orb's pull back to its own place in the round ball (this is the ball's gravity)
+const DRAG = 7;                   // how quickly motion dies away: just short of any bounce
+const ITER = 12;                  // overlap-fixing passes per step
+const VMAX = 1.0;                 // nothing is ever shoved hard
+const REST_SPEED = 0.006;         // slower than this (scene units a second) counts as still…
+const REST_TIME = 0.3;            // …for this long, and then the ball sleeps
+const CREEP = 0.08, STICK = 18;   // a little rest friction once an orb is back at its place, so it stops instead of lingering
+const HOLD_OMEGA = 5.5;           // how briskly a chosen orb glides to the surface…
+const HOLD_MAX = 0.8;             // …and never faster than this
+const PUSH = 24, REACH = 3 * R;   // the cursor's soft nudge, and how far it reaches
+const C0 = [0, 0, 0];             // the middle of the ball
+
+const P = new Float64Array(N * 3), V = new Float64Array(N * 3), Q = new Float64Array(N * 3);
+const P0 = new Float64Array(N * 3), V0 = new Float64Array(N * 3);   // where things were at the start of a step
+const home = new Float64Array(N * 3);           // each orb's own place in the round ball
+const W = new Float64Array(N).fill(1);          // 1 = free to move, 0 = held in place
+
+/* Bowl sounds, one per PAIR of orbs, on approach only. A pair sounds once, when its gap closes past
+   the touch line while the two are moving toward each other fast enough. Then it is locked silent:
+   resting contact, jiggles and re-solves can never sound again. It unlocks only once the two are clearly
+   apart (a gap bigger than one full orb radius), which takes a strong push, Explode or Gather. */
+const TOUCH = GAP + 0.03 * R;     // the touch line (centre to centre)
+const APART = 3 * R;              // centre to centre when the gap is one full radius
+const APPROACH_MIN = 0.03;        // slower meetings than this (scene units a second) make no sound
+const pairLock = new Uint8Array(N * N);
+let listening = false;            // stays off while the ball first settles, before anyone is here
+const _sv = new THREE.Vector3();
+function listenPairs(h, X0, X1, V0s, speedOf) {
+  for (let i = 0; i < N; i++) {
+    const a = i * 3;
+    for (let j = i + 1; j < N; j++) {
+      const b = j * 3, key = i * N + j;
+      const dx = X1[b] - X1[a], dy = X1[b + 1] - X1[a + 1], dz = X1[b + 2] - X1[a + 2];
+      const d1 = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (pairLock[key]) { if (d1 > APART) pairLock[key] = 0; continue; }
+      if (d1 > TOUCH) continue;
+      pairLock[key] = 1;                          // touching now: quiet until they are clearly apart again
+      const d0 = Math.hypot(X0[b] - X0[a], X0[b + 1] - X0[a + 1], X0[b + 2] - X0[a + 2]);
+      if (d0 <= TOUCH) continue;                  // it was already touching, so it never sounds
+      let speed;
+      if (speedOf) speed = speedOf(i, j);
+      else {
+        speed = (d0 - d1) / h;
+        const s = d1 > 1e-9 ? 1 / d1 : 0;         // also the closing speed they had coming into this step
+        speed = Math.max(speed, -((V0s[b] - V0s[a]) * dx + (V0s[b + 1] - V0s[a + 1]) * dy + (V0s[b + 2] - V0s[a + 2]) * dz) * s);
+      }
+      if (speed >= APPROACH_MIN) collide(i, j, speed);
+    }
+  }
+}
+function lockTouching() {                         // pairs that already touch (or nearly) start locked: no burst
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+    const d = Math.hypot(P[j * 3] - P[i * 3], P[j * 3 + 1] - P[i * 3 + 1], P[j * 3 + 2] - P[i * 3 + 2]);
+    pairLock[i * N + j] = d <= APART ? 1 : 0;
+  }
+}
+function collide(i, j, speed) {
+  sound.contacts++;
+  if (!sound.ctx || !sound.on || sound.ctx.state !== 'running') return;
+  _sv.set((P[i * 3] + P[j * 3]) / 2, (P[i * 3 + 1] + P[j * 3 + 1]) / 2, (P[i * 3 + 2] + P[j * 3 + 2]) / 2).project(camera);
+  const wi = items[i].world, wj = items[j].world; // [mood, intensity, …] of each
+  const touch = {
+    t: sound.ctx.currentTime + 0.004,
+    k: noteOfMood((wi[0] + wj[0]) / 2),           // the pair's note, from its two moods
+    bright: (wi[1] + wj[1]) / 2,
+    v: clamp(speed / 1.8, 0, 1),                  // louder for a faster meeting
+    pan: clamp(_sv.x, -1, 1) * 0.65,              // a soft pan by screen side
+  };
+  if (sound.log && sound.log.length < 2000) sound.log.push(touch);   // only while the automated look-over listens
+  if (bowl(sound.bowls, touch, touch.v, touch.pan, touch.t, Math.random)) sound.played++;
+}
+const sim = { awake: true, still: 0, acc: 0, hold: -1, goal: [0, 0, 0], hv: [0, 0, 0], arrived: true, quiet: 0, calming: false, mate: -1, mv: [0, 0, 0] };
+const push = { amt: 0, goal: 0, last: 0, o: new THREE.Vector3(), d: new THREE.Vector3(0, 0, -1) };
+let mode = 'ball';                // 'ball' | 'toField' | 'field' | 'toBall'
+let ballR = 0.5;
+
+function separate(X, gap = GAP, weights = W) {  // one pass that pushes overlapping orbs apart
+  let any = false;
+  const g2 = gap * gap;
+  for (let i = 0; i < N; i++) {
+    const a = i * 3;
+    for (let j = i + 1; j < N; j++) {
+      let wi = weights[i], wj = weights[j];
+      if (!wi && !wj) wi = wj = 1;                // two guided orbs still make way for each other
+      const ws = wi + wj;
+      const b = j * 3;
+      let dx = X[b] - X[a], dy = X[b + 1] - X[a + 1], dz = X[b + 2] - X[a + 2];
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 >= g2) continue;
+      let d = Math.sqrt(d2);
+      if (d < 1e-9) { dx = (seeded(i * 31 + j)() - 0.5) * 1e-4; dy = 1e-4; dz = 0; d = Math.hypot(dx, dy); }
+      const c = (gap - d) / (d * ws);
+      X[a] -= dx * c * wi; X[a + 1] -= dy * c * wi; X[a + 2] -= dz * c * wi;
+      X[b] += dx * c * wj; X[b + 1] += dy * c * wj; X[b + 2] += dz * c * wj;
+      if (gap - d > 1e-7) any = true;
+    }
+  }
+  return any;
+}
+
+function glide(k, goal, g, hv, h) {           // a critically damped spring toward goal[g..g+2], never faster than HOLD_MAX
+  const om = HOLD_OMEGA, f = 1 + 2 * h * om, hoo = h * om * om, hhoo = h * hoo, inv = 1 / (f + hhoo);
+  for (let a = 0; a < 3; a++) {
+    const x = P[k + a], v = hv[a], to = goal[g + a];
+    Q[k + a] = (f * x + h * v + hhoo * to) * inv;
+    hv[a] = (v + hoo * (to - x)) * inv;
+  }
+  const sp = Math.hypot(hv[0], hv[1], hv[2]);
+  if (sp > HOLD_MAX) {
+    const s = HOLD_MAX / sp;
+    for (let a = 0; a < 3; a++) { hv[a] *= s; Q[k + a] = P[k + a] + hv[a] * h; }
+  }
+}
+function step(h) {
+  P0.set(P);
+  V0.set(V);
+  const pushing = push.amt > 0.002;
+  let ox = 0, oy = 0, oz = 0, dx = 0, dy = 0, dz = 0, front = 0;
+  if (pushing) {
+    ox = push.o.x; oy = push.o.y; oz = push.o.z; dx = push.d.x; dy = push.d.y; dz = push.d.z;
+    const bx = C0[0] - ox, by = C0[1] - oy, bz = C0[2] - oz;   // where the mouse ray first meets the ball
+    const tc = bx * dx + by * dy + bz * dz, m2 = bx * bx + by * by + bz * bz - tc * tc, rr = ballR * ballR;
+    front = m2 < rr ? tc - Math.sqrt(rr - m2) : tc;
+  }
+  // once the orbs have had time to glide home, friction eases in, so the ball always comes to rest calmly
+  // (the pulls fade out as it calms, so nothing is left pushing the orbs into each other)
+  const calmK = sim.calming ? clamp((sim.quiet - 2.4) / 1.0, 0, 1) : 0;
+  const keep = Math.exp(-(DRAG + 38 * calmK) * h), toHome = HOME * (1 - calmK);
+  for (let i = 0; i < N; i++) {
+    const k = i * 3;
+    // the chosen orb glides to its place, and the orb trading places with it glides to its new one; the others make way
+    if (i === sim.hold) { glide(k, sim.goal, 0, sim.hv, h); continue; }
+    if (i === sim.mate) { glide(k, home, k, sim.mv, h); continue; }
+    const cx = P[k] - C0[0], cy = P[k + 1] - C0[1], cz = P[k + 2] - C0[2];
+    let ax = -toHome * (P[k] - home[k]), ay = -toHome * (P[k + 1] - home[k + 1]), az = -toHome * (P[k + 2] - home[k + 2]);
+    if (pushing) {
+      const rx = P[k] - ox, ry = P[k + 1] - oy, rz = P[k + 2] - oz;
+      const t = rx * dx + ry * dy + rz * dz;
+      if (t > 0) {
+        const px = rx - dx * t, py = ry - dy * t, pz = rz - dz * t;
+        const dist = Math.hypot(px, py, pz);
+        if (dist < REACH) {
+          const fall = (1 - dist / REACH) ** 2;
+          const deep = Math.exp(-Math.max(0, t - front) / (3 * R));   // orbs deep inside barely feel it
+          const s = dist > 1e-6 ? 1 / dist : 0, cl = Math.hypot(cx, cy, cz) || 1;
+          const f = PUSH * push.amt * fall * deep;
+          // aside, away from the mouse ray, and a little outward so the surface lifts and parts
+          ax += (px * s * 0.85 + cx / cl * 0.4) * f;
+          ay += (py * s * 0.85 + cy / cl * 0.4) * f;
+          az += (pz * s * 0.85 + cz / cl * 0.4) * f;
+        }
+      }
+    }
+    let vx = (V[k] + ax * h) * keep, vy = (V[k + 1] + ay * h) * keep, vz = (V[k + 2] + az * h) * keep;
+    const sp = Math.hypot(vx, vy, vz);
+    if (sp > VMAX) { const s = VMAX / sp; vx *= s; vy *= s; vz *= s; }
+    else if (sp < CREEP && Math.hypot(P[k] - home[k], P[k + 1] - home[k + 1], P[k + 2] - home[k + 2]) < 0.04 * R) { const s = Math.exp(-STICK * h); vx *= s; vy *= s; vz *= s; }
+    Q[k] = P[k] + vx * h; Q[k + 1] = P[k + 1] + vy * h; Q[k + 2] = P[k + 2] + vz * h;
+  }
+  for (let it = 0; it < ITER; it++) if (!separate(Q)) break;
+  let fastest = 0;
+  for (let i = 0; i < N; i++) {
+    const k = i * 3;
+    const vx = (Q[k] - P[k]) / h, vy = (Q[k + 1] - P[k + 1]) / h, vz = (Q[k + 2] - P[k + 2]) / h;
+    V[k] = vx; V[k + 1] = vy; V[k + 2] = vz;
+    P[k] = Q[k]; P[k + 1] = Q[k + 1]; P[k + 2] = Q[k + 2];
+    if (i !== sim.hold && i !== sim.mate) fastest = Math.max(fastest, vx * vx + vy * vy + vz * vz);
+  }
+  if (sim.mate >= 0) {                            // home: from here it is an ordinary orb again
+    const k = sim.mate * 3;
+    if (Math.hypot(P[k] - home[k], P[k + 1] - home[k + 1], P[k + 2] - home[k + 2]) < 1.5e-3 && Math.hypot(...sim.mv) < 0.01) releaseMate();
+  }
+  if (sim.hold >= 0) {
+    const k = sim.hold * 3;
+    const off = Math.hypot(P[k] - sim.goal[0], P[k + 1] - sim.goal[1], P[k + 2] - sim.goal[2]);
+    sim.arrived = off < 1.5e-3 && Math.hypot(...sim.hv) < 0.01 && sim.mate < 0;
+  } else sim.arrived = sim.mate < 0;
+  if (listening) listenPairs(h, P0, P, V0, null);
+  return Math.sqrt(fastest);
+}
+
+function settleNow() {                // the last hair of overlap goes without any pull, then everything stops
+  for (let it = 0; it < 60; it++) if (!separate(P)) break;
+  V.fill(0); sim.hv = [0, 0, 0];
+  if (sim.hold >= 0) { const k = sim.hold * 3; P[k] = sim.goal[0]; P[k + 1] = sim.goal[1]; P[k + 2] = sim.goal[2]; }
+  sim.awake = false; sim.still = 0; sim.acc = 0;
+}
+function wake() { if (!sim.awake) { sim.awake = true; sim.still = 0; sim.acc = 0; sim.quiet = 0; } }
+function stir() { wake(); sim.quiet = 0; }      // something new happened: let the ball move freely for a moment
+function advance(dt) {
+  if (!sim.awake) return;
+  sim.acc = Math.min(sim.acc + dt, H * 8);
+  while (sim.acc >= H) {
+    sim.acc -= H;
+    sim.quiet = push.amt > 0.002 || !sim.arrived ? 0 : sim.quiet + H;
+    const v = step(H);
+    if (v < REST_SPEED && push.amt <= 0.002 && sim.arrived) {
+      sim.still += H;
+      if (sim.still >= REST_TIME) { settleNow(); return; }
+    } else sim.still = 0;
+  }
+}
+
+/* A round ball, in layers: a full outer shell, an inner ring and one orb at the heart. Each orb starts from its
+   measured spot (mood, time, life squeezed into a ball) and takes the free place nearest that direction, so similar
+   mornings sit near each other. The strongest mornings sit outside, the mildest at the heart. All of this happens
+   before the first frame is drawn. */
+function spreadOnSphere(k, rnd) {                 // k places spread evenly over a sphere: they push each other apart
+  const pts = [], turn = rnd() * Math.PI * 2;
+  for (let i = 0; i < k; i++) {
+    const y = 1 - (i + 0.5) / k * 2, s = Math.sqrt(1 - y * y), a = i * Math.PI * (3 - Math.sqrt(5)) + turn;
+    pts.push([s * Math.cos(a), y, s * Math.sin(a)]);
+  }
+  const F = pts.map(() => [0, 0, 0]), ROUNDS = 500;
+  for (let it = 0; it < ROUNDS && k > 1; it++) {
+    for (const f of F) f[0] = f[1] = f[2] = 0;
+    for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++) {
+      const dx = pts[i][0] - pts[j][0], dy = pts[i][1] - pts[j][1], dz = pts[i][2] - pts[j][2];
+      const l2 = dx * dx + dy * dy + dz * dz + 1e-12, f = 1 / (l2 * l2 * l2 * Math.sqrt(l2));
+      F[i][0] += dx * f; F[i][1] += dy * f; F[i][2] += dz * f;
+      F[j][0] -= dx * f; F[j][1] -= dy * f; F[j][2] -= dz * f;
+    }
+    const st = 0.6 / k * (1 - it / ROUNDS) + 0.02 / k;
+    for (let i = 0; i < k; i++) {
+      const f = F[i], fl = Math.hypot(f[0], f[1], f[2]) || 1, p = pts[i];
+      p[0] += f[0] / fl * st; p[1] += f[1] / fl * st; p[2] += f[2] / fl * st;
+      const l = Math.hypot(p[0], p[1], p[2]); p[0] /= l; p[1] /= l; p[2] /= l;
+    }
+  }
+  let min = 2;
+  for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++) min = Math.min(min, Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1], pts[i][2] - pts[j][2]));
+  return { pts, min };
+}
+function cheapestMatch(cost) {                    // the lowest-cost one-to-one matching (rows to columns), Hungarian method
+  const n = cost.length, u = new Float64Array(n + 1), v = new Float64Array(n + 1), p = new Int32Array(n + 1), way = new Int32Array(n + 1);
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Float64Array(n + 1).fill(Infinity), used = new Uint8Array(n + 1);
+    do {
+      used[j0] = 1;
+      const i0 = p[j0];
+      let delta = Infinity, j1 = 0;
+      for (let j = 1; j <= n; j++) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+        if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+      }
+      for (let j = 0; j <= n; j++) { if (used[j]) { u[p[j]] += delta; v[j] -= delta; } else minv[j] -= delta; }
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+  }
+  const col = new Int32Array(n);
+  for (let j = 1; j <= n; j++) col[p[j] - 1] = j - 1;
+  return col;
+}
+function layRoundBall() {
+  const spot = items.map(it => {                  // the measured spot, as before
+    const rnd = seeded(it.n * 2654435761);
+    const jig = () => (rnd() - 0.5) * 0.08;
+    const x = it.e.mood + jig(), y = it.e.time + jig(), z = it.e.life + jig();
+    const strongest = Math.max(Math.abs(x), Math.abs(y), Math.abs(z), 1e-6);
+    const k = strongest / (Math.hypot(x, y, z) || 1) * 0.62;
+    return [x * k, y * k, z * k];
+  });
+  const byStrength = spot.map((s, i) => [i, Math.hypot(s[0], s[1], s[2])]).sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(x => x[0]);
+  const rnd = seeded(20261021);
+  const place = (members, slots, radius) => {
+    const dirs = members.map(i => { const s = spot[i], l = Math.hypot(s[0], s[1], s[2]) || 1; return [s[0] / l, s[1] / l, s[2] / l]; });
+    const pick = cheapestMatch(dirs.map(d => slots.map(s => (d[0] - s[0]) ** 2 + (d[1] - s[1]) ** 2 + (d[2] - s[2]) ** 2)));
+    members.forEach((i, row) => { const s = slots[pick[row]]; for (let a = 0; a < 3; a++) P[i * 3 + a] = C0[a] + s[a] * radius; });
+  };
+  const target = new Float64Array(N);             // how far from the middle each orb belongs
+  const outerCount = N < 6 ? N : Math.round(N * 0.785);
+  const outer = spreadOnSphere(outerCount, rnd);
+  const rOuter = outerCount > 1 ? GAP * 1.004 / outer.min : 0;
+  const outerMembers = byStrength.slice(0, outerCount);
+  place(outerMembers, outer.pts, rOuter);
+  outerMembers.forEach(i => { target[i] = rOuter; });
+  const rest = byStrength.slice(outerCount);
+  if (rest.length) {
+    const heart = rest.length > 1 ? rest.pop() : -1;  // the mildest morning sits at the very middle
+    if (rest.length) {
+      const ring = spreadOnSphere(rest.length, rnd);
+      const rRing = Math.max(rOuter - 1.75 * R, rest.length > 1 ? GAP * 1.004 / ring.min : 0, heart >= 0 ? GAP * 1.004 : 0);
+      place(rest, ring.pts, rRing);
+      rest.forEach(i => { target[i] = rRing; });
+    }
+    if (heart >= 0) { for (let a = 0; a < 3; a++) P[heart * 3 + a] = C0[a]; target[heart] = 0; }
+  }
+  // settle the last bumps: no overlaps, each layer kept round
+  const ones = new Float64Array(N).fill(1);
+  for (let it = 0; it < 400; it++) {
+    const any = separate(P, GAP, ones);
+    for (let i = 0; i < N; i++) {
+      const k = i * 3, dx = P[k] - C0[0], dy = P[k + 1] - C0[1], dz = P[k + 2] - C0[2], r = Math.hypot(dx, dy, dz);
+      if (r < 1e-9) continue;
+      const s = 1 + (target[i] - r) / r * 0.3;
+      P[k] = C0[0] + dx * s; P[k + 1] = C0[1] + dy * s; P[k + 2] = C0[2] + dz * s;
+    }
+    if (!any && it > 40) break;
+  }
+  for (let it = 0; it < 200; it++) if (!separate(P, GAP, ones)) break;
+}
+layRoundBall();
+home.set(P);                      // this round ball is where every orb belongs
+const origin = new Float64Array(P);   // Gather returns here
+V.fill(0);
+sim.awake = false;                // already calm: the first frame shows the ball at rest
+sim.calming = true;
+ballR = 0;
+for (let i = 0; i < N; i++) ballR = Math.max(ballR, Math.hypot(P[i * 3] - C0[0], P[i * 3 + 1] - C0[1], P[i * 3 + 2] - C0[2]));
+ballR += R;
+const floorY = C0[1] - ballR - 0.1;
+
+/* ---------- the exploded field: placed by mood (across), time (up = looking back), life (near = work) ---------- */
+const FX = 1.9, FY = 1.2, FZ = 1.45;
+const fieldC = [0, floorY + 0.42 + FY, 0];
+const FP = new Float64Array(N * 3);
+items.forEach((it, i) => {
+  const rnd = seeded(it.n * 7919 + 13);
+  FP[i * 3] = fieldC[0] + it.e.mood * FX + (rnd() - 0.5) * 0.12;
+  FP[i * 3 + 1] = fieldC[1] + it.e.time * FY + (rnd() - 0.5) * 0.12;
+  FP[i * 3 + 2] = fieldC[2] + it.e.life * FZ + (rnd() - 0.5) * 0.12;
+});
+const ones = new Float64Array(N).fill(1);
+for (let it = 0; it < 300; it++) if (!separate(FP, 2 * R * 1.6, ones)) break;   // a little room each, out there
+
+const tween ={ t0: 0, dur: 1, from: new Float64Array(N * 3), to: new Float64Array(N * 3), delay: new Float64Array(N) };
+let spread = 0;                                   // 0 = ball, 1 = field (eased)
+
+/* ---------- links for the exploded view: each morning's three closest, each pair once ---------- */
+const linkMap = new Map();
+nearest.forEach((list, a) => list.slice(0, 3).forEach(({ b, s }) => {
+  const lo = Math.min(a, b), hi = Math.max(a, b);   // items are in date order, so streaks flow forward in time
+  linkMap.set(lo * 4096 + hi, { a: lo, b: hi, s });
+}));
+const links = [...linkMap.values()];
+
+/* ---------- drawing ---------- */
+const canvas = $('#scene');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });   // every edge is drawn soft by its own shader
+} catch (err) {
+  showProblem('This browser could not start 3D drawing here. Please try Chrome or Safari.');
+  throw err;
+}
+// Sharp on a laptop's retina screen; on a very large window the drawing stays near 4K's worth of pixels,
+// so the glowing worlds stay smooth there too.
+const pixelRatio = () => Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(8.3e6 / Math.max(innerWidth * innerHeight, 1)));
+renderer.setPixelRatio(pixelRatio());
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.setClearColor(0xffffff, 1);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.03, 80);
+
+// one shared list of where every orb is, for the floor shadow and the streaks
+const uOrb = { value: Array.from({ length: N }, () => new THREE.Vector4()) };
+const uCol = { value: items.map(it => new THREE.Vector3(...it.col)) };
+
+/* ---------- the tiny worlds: one soft 3D noise that every world is carved from, made once at load ---------- */
+// Four kinds of noise in one block that repeats seamlessly: soft clouds (red), the same clouds a little higher
+// up (green, so a world can tell which side of each cloud faces the light above it), the walls between crystal
+// cells (blue) and one steady value per crystal cell (alpha), so the crisper work mornings are built of facets.
+function makeNoiseVolume(S) {
+  const rnd = seeded(20261021);
+  const vol = new Float32Array(S * S * S);
+  const out = new Uint8Array(S * S * S * 4);
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  function smooth(periods, amps) {             // smooth gradient noise at a few sizes, repeating every S steps
+    vol.fill(0);
+    periods.forEach((Pn, o) => {
+      const G = new Float32Array(Pn * Pn * Pn * 3);
+      for (let i = 0; i < Pn * Pn * Pn; i++) {
+        let x, y, z, l;
+        do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; l = x * x + y * y + z * z; } while (l > 1 || l < 1e-3);
+        l = Math.sqrt(l);
+        G[i * 3] = x / l; G[i * 3 + 1] = y / l; G[i * 3 + 2] = z / l;
+      }
+      const sc = Pn / S, amp = amps[o];
+      const dot = (xi, yi, zi, dx, dy, dz) => { const k = ((zi * Pn + yi) * Pn + xi) * 3; return G[k] * dx + G[k + 1] * dy + G[k + 2] * dz; };
+      let v = 0;
+      for (let z = 0; z < S; z++) {
+        const fz = z * sc, iz = Math.floor(fz), tz = fz - iz, wz = fade(tz), z0 = iz % Pn, z1 = (iz + 1) % Pn;
+        for (let y = 0; y < S; y++) {
+          const fy = y * sc, iy = Math.floor(fy), ty = fy - iy, wy = fade(ty), y0 = iy % Pn, y1 = (iy + 1) % Pn;
+          for (let x = 0; x < S; x++, v++) {
+            const fx = x * sc, ix = Math.floor(fx), tx = fx - ix, wx = fade(tx), x0 = ix % Pn, x1 = (ix + 1) % Pn;
+            const a0 = lerp(dot(x0, y0, z0, tx, ty, tz), dot(x1, y0, z0, tx - 1, ty, tz), wx);
+            const a1 = lerp(dot(x0, y1, z0, tx, ty - 1, tz), dot(x1, y1, z0, tx - 1, ty - 1, tz), wx);
+            const a2 = lerp(dot(x0, y0, z1, tx, ty, tz - 1), dot(x1, y0, z1, tx - 1, ty, tz - 1), wx);
+            const a3 = lerp(dot(x0, y1, z1, tx, ty - 1, tz - 1), dot(x1, y1, z1, tx - 1, ty - 1, tz - 1), wx);
+            vol[v] += lerp(lerp(a0, a1, wy), lerp(a2, a3, wy), wz) * amp;
+          }
+        }
+      }
+    });
+    return vol;
+  }
+  const cellValue = new Float32Array(S * S * S);
+  function cellWalls(C) {                       // how far each spot is from the nearest wall between crystal cells
+    const pts = new Float32Array(C * C * C * 3), val = new Float32Array(C * C * C);
+    for (let i = 0; i < pts.length; i++) pts[i] = rnd();
+    for (let i = 0; i < val.length; i++) val[i] = rnd();
+    const sc = C / S, wrap = c => ((c % C) + C) % C;
+    let v = 0;
+    for (let z = 0; z < S; z++) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++, v++) {
+      const fx = (x + 0.5) * sc, fy = (y + 0.5) * sc, fz = (z + 0.5) * sc, ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz);
+      let f1 = 9, f2 = 9, near = 0;
+      for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const c = (wrap(iz + dz) * C + wrap(iy + dy)) * C + wrap(ix + dx), k = c * 3;
+        const px = ix + dx + pts[k] - fx, py = iy + dy + pts[k + 1] - fy, pz = iz + dz + pts[k + 2] - fz, d = px * px + py * py + pz * pz;
+        if (d < f1) { f2 = f1; f1 = d; near = c; } else if (d < f2) f2 = d;
+      }
+      vol[v] = Math.sqrt(f2) - Math.sqrt(f1);
+      cellValue[v] = val[near];
+    }
+    return vol;
+  }
+  function packCentred(src, ch) {               // middle grey is the average; ±3 spreads reach black and white
+    let sum = 0, sq = 0;
+    for (let i = 0; i < src.length; i++) { sum += src[i]; sq += src[i] * src[i]; }
+    const mean = sum / src.length, sd = Math.sqrt(Math.max(sq / src.length - mean * mean, 1e-12));
+    for (let i = 0; i < src.length; i++) out[i * 4 + ch] = Math.max(0, Math.min(255, Math.round((0.5 + (src[i] - mean) / (6 * sd)) * 255)));
+  }
+  function packWalls(src, ch) {                 // 0 on a wall, 1 in the middle of a cell
+    let hi = 0;
+    for (let i = 0; i < src.length; i++) hi = Math.max(hi, src[i]);
+    for (let i = 0; i < src.length; i++) out[i * 4 + ch] = Math.round(Math.min(1, src[i] / hi) * 255);
+  }
+  const cloud = Float32Array.from(smooth([4, 8, 16], [1, 0.4, 0.17]));
+  const second = smooth([4, 8], [1, 0.45]);
+  for (let i = 0; i < cloud.length; i++) cloud[i] += second[i] * 0.4;
+  packCentred(cloud, 0);
+  const LIFT = 5;                               // "a little higher": five steps up, about a quarter of an orb
+  for (let z = 0; z < S; z++) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) vol[(z * S + y) * S + x] = cloud[(z * S + (y + LIFT) % S) * S + x];
+  packCentred(vol, 1);
+  packWalls(cellWalls(5), 2);
+  for (let i = 0; i < cellValue.length; i++) out[i * 4 + 3] = Math.round(cellValue[i] * 255);
+  const tex = new THREE.Data3DTexture(out, S, S, S);
+  tex.format = THREE.RGBAFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = tex.wrapR = THREE.RepeatWrapping;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return tex;
+}
+const noiseTex = makeNoiseVolume(64);
+
+/* the orbs: one instanced draw, re-sorted back to front every frame so the glass blends right.
+   Each is a thin clear glass shell; the colour comes from the small world glowing inside it, followed
+   through the orb in depth (a short march through the noise above), so it shifts as the orb or the view turns. */
+const orbGeo = new THREE.SphereGeometry(1, 40, 30);
+const perOrb = size => new THREE.InstancedBufferAttribute(new Float32Array(N * size), size).setUsage(THREE.DynamicDrawUsage);
+const aBase = perOrb(3), aDeep = perOrb(3), aLite = perOrb(3), aLook = perOrb(4), aWorld = perOrb(4), aNest = perOrb(4);
+Object.entries({ aBase, aDeep, aLite, aLook, aWorld, aNest }).forEach(([name, attr]) => orbGeo.setAttribute(name, attr));
+const KEY = new THREE.Vector3(-0.48, 0.78, 0.58).normalize();      // where the soft studio light comes from
+const FILL = new THREE.Vector3(0.62, -0.42, 0.66).normalize();     // a faint bounce from below, on the other side
+const KEY_X = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), KEY).normalize();   // across and up the light's window,
+const KEY_Y = new THREE.Vector3().crossVectors(KEY, KEY_X);                                      // for the shape of its reflection
+const orbMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uNoise: { value: noiseTex },
+    uTime: { value: 0 },
+    uViewH: { value: 1000 },
+    uKey: { value: KEY },
+    uFill: { value: FILL },
+    uKeyX: { value: KEY_X },
+    uKeyY: { value: KEY_Y },
+  },
+  vertexShader: /* glsl */`
+    attribute vec3 aBase;
+    attribute vec3 aDeep;
+    attribute vec3 aLite;
+    attribute vec4 aLook;           // x inner glow · y fade · z hover lift · w detail
+    attribute vec4 aWorld;          // mood · intensity · life · time
+    attribute vec4 aNest;           // where this world sits in the noise · w: a quieter note
+    uniform float uViewH;
+    varying vec3 vPos;
+    flat varying vec4 vBall;        // centre and radius
+    flat varying vec4 vLook;        // glow · fade · lift · radius on screen in pixels
+    flat varying vec3 vBase;
+    flat varying vec3 vDeep;
+    flat varying vec3 vLite;
+    flat varying vec4 vWorld;
+    flat varying vec4 vNest;
+    flat varying vec4 vTurn;        // x: how fast the world turns · y: its starting angle
+    flat varying float vDetail;     // 1 in full view, less for orbs seen through others
+    void main() {
+      vec3 c = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      float r = length((modelMatrix * instanceMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
+      vec4 cv = viewMatrix * vec4(c, 1.0);
+      float px = r * projectionMatrix[1][1] * 0.5 * uViewH / max(-cv.z, 1e-3);
+      vec3 p = c + normal * r * (1.008 + 2.0 / max(px, 2.0));   // a hair larger, so the soft round edge has room
+      vPos = p;
+      vBall = vec4(c, r);
+      vLook = vec4(aLook.xyz, px);
+      vBase = aBase; vDeep = aDeep; vLite = aLite; vWorld = aWorld; vNest = aNest; vDetail = aLook.w;
+      // each world turns slowly about an upright axis (so its sky stays above); livelier mornings turn a little faster
+      float joy = clamp(aWorld.x * 0.55 + 0.5, 0.0, 1.0);
+      float spin = (0.05 + 0.12 * aWorld.y) * mix(0.55, 1.0, joy) * mix(1.0, 0.6, aNest.w) * (aNest.x > 0.5 ? 1.0 : -1.0);
+      vTurn = vec4(spin, aNest.y * 6.2831853, 0.0, 0.0);
+      gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+    }`,
+  fragmentShader: /* glsl */`
+    uniform highp sampler3D uNoise;
+    uniform float uTime;
+    uniform float uViewH;
+    uniform vec3 uKey;
+    uniform vec3 uFill;
+    uniform vec3 uKeyX;
+    uniform vec3 uKeyY;
+    varying vec3 vPos;
+    flat varying vec4 vBall;
+    flat varying vec4 vLook;
+    flat varying vec3 vBase;
+    flat varying vec3 vDeep;
+    flat varying vec3 vLite;
+    flat varying vec4 vWorld;
+    flat varying vec4 vNest;
+    flat varying vec4 vTurn;        // x: how fast this world turns · y: its starting angle
+    flat varying float vDetail;
+    vec3 hash31(float p) { vec3 p3 = fract(vec3(p) * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xxy + p3.yzz) * p3.zyx); }
+
+    // what this morning's numbers ask of its world (set once per pixel in main)
+    float joy, storm, sunny, still, crystal, thr, soft, swirl, tt, glow, near;
+    vec3 off;
+
+    // One layer of the world: a thin sheet of mist on a sphere of radius r inside the glass. It turns at its own
+    // pace, is carried by slow currents and lit from above, so the layers slide past each other and read as depth.
+    // Returns the layer's colour (rgb) and how much it covers (a).
+    vec4 layer(vec3 p, float r, float k, float m2, bool fine) {
+      float ang = uTime * vTurn.x * (1.0 - 0.28 * k) + vTurn.y + k * 2.1;   // inner layers turn more slowly
+      float c = cos(ang), s = sin(ang);
+      vec3 q = vec3(c * p.x - s * p.z, p.y, s * p.x + c * p.z);
+      q += swirl * sin(q.yzx * 2.3 + vec3(tt, tt * 0.83, -tt * 0.91) + off.zxy + k);   // slow currents
+      vec3 uv = q * (0.5 - 0.06 * k) + off + k * 0.31;
+      vec4 nz = textureLod(uNoise, uv, 0.0);
+      float shape = nz.r;
+      if (fine) {                                          // finer wisps when there is room to see them, finer still up close
+        shape += (textureLod(uNoise, uv * 2.7 + 0.5, 0.0).r - 0.5) * (0.26 + 0.08 * near);
+        if (near > 0.01) shape += (textureLod(uNoise, uv * 6.9 + 0.25, 0.0).r - 0.5) * 0.15 * near;
+      }
+      float facet = 0.4 + 0.6 * nz.a;                                              // flat-faced crystal cells, each its own tone
+      shape = mix(shape, shape * 0.66 + facet * 0.36, crystal * 0.8);
+      float cover = smoothstep(thr - soft + 0.07 * (1.0 - k), thr + soft + 0.07 * (1.0 - k), shape);   // outer layers are sparser
+      float edge = smoothstep(0.0, 0.85, sqrt(max(1.0 - m2 / (r * r), 0.0)));   // each layer fades out toward its own rim: no rings
+      float a = cover * edge * mix(0.36, 0.9, k);
+      // light from above: a cloud thinning upward is showing its sunlit top; each crystal facet catches it differently
+      float lit = clamp(0.5 + (nz.r - nz.g) * 5.0 + p.y / r * 0.3, 0.0, 1.0);
+      lit = mix(lit, 0.2 + 0.8 * nz.a, crystal * 0.6);
+      vec3 col = mix(vDeep, vBase, smoothstep(0.0, 0.55, lit));
+      col = mix(col, vLite, smoothstep(0.45, 1.0, lit) * mix(0.3, 0.55, joy) + still * 0.18);
+      col = mix(col, vDeep, k * 0.18 * (1.0 - joy));   // deeper layers sink into the world's own colour
+      col = mix(col, mix(vLite, vec3(1.0), 0.35), (1.0 - smoothstep(0.03, 0.12, nz.b)) * crystal * near * 0.6);   // up close, crystal edges catch the light
+      return vec4(col, a);
+    }
+
+    void main() {
+      vec3 rd = normalize(vPos - cameraPosition);
+      vec3 oc = (cameraPosition - vBall.xyz) / vBall.w;     // the eye, in orb radii from the centre
+      float b = dot(oc, rd);
+      float m2 = max(dot(oc, oc) - b * b, 0.0);            // how close this line of sight passes the centre
+      float m = sqrt(m2);
+      float px = max(fwidth(m), 1e-4);                     // one pixel, in orb radii
+      float cover = clamp((1.0 - m) / px + 0.5, 0.0, 1.0); // a soft, perfectly round edge at any size
+      if (cover <= 0.0) discard;
+      float mc = min(m, 0.999), hc = sqrt(1.0 - mc * mc);
+      float t0 = -b - hc, t1 = -b + hc;                    // where the line enters and leaves the glass
+      vec3 nIn = oc + rd * t0;
+      float ndv = clamp(-dot(nIn, rd), 0.0, 1.0);
+
+      float mood = vWorld.x, inten = vWorld.y, life = vWorld.z, look = vWorld.w;
+      joy = clamp(mood * 0.55 + 0.5, 0.0, 1.0);           // 0 painful · 0.5 calm · 1 joyful
+      storm = 1.0 - smoothstep(0.08, 0.5, joy);            // the painful mornings' heavy weather
+      sunny = smoothstep(0.5, 0.95, joy);                  // the joyful mornings' light
+      still = 1.0 - abs(joy - 0.5) * 2.0;                  // 1 for the calmest mornings
+      crystal = smoothstep(0.05, 0.85, life);              // work: crisp, faceted · personal: soft cloud
+      float quiet = mix(1.0, 0.72, vNest.w);               // notes are a little quieter
+      glow = vLook.x;
+      thr = mix(0.56, 0.47, inten) - storm * 0.06 + still * 0.02;
+      near = smoothstep(0.3, 0.85, vLook.w / (0.5 * uViewH));   // how much of the view this orb fills: up close the world sharpens
+      soft = mix(0.15, 0.06, crystal) * mix(1.25, 0.8, inten) * (1.0 + still * 0.8) * mix(1.0, 0.65, near);
+      swirl = mix(0.1, 0.34, joy) * mix(0.55, 1.0, inten);
+      tt = uTime * (0.04 + 0.2 * inten) * mix(0.45, 1.0, joy) * quiet;   // the weather's own slow clock
+      off = vNest.xyz * 3.0;
+      bool fine = vLook.w > 170.0 && vDetail > 0.7;        // fine wisps only where they show (far sides only while small)
+
+      // three layers of mist at different depths, seen front to back: near sides, the heart, then far sides
+      const float R1 = 0.84, R2 = 0.64, R3 = 0.42;
+      vec3 C = vec3(0.0);                                  // light gathered so far
+      float T = 1.0;                                       // how much still shows through
+      float tF1 = 1e3, tF2 = 1e3, tF3 = 1e3, aF1 = 0.0, aF2 = 0.0, aF3 = 0.0;
+      vec4 L;
+      if (m2 < R1 * R1) { tF1 = -b - sqrt(R1 * R1 - m2); L = layer(oc + rd * tF1, R1, 0.0, m2, fine); aF1 = L.a; C += T * L.a * L.rgb; T *= 1.0 - L.a; }
+      if (m2 < R2 * R2) { tF2 = -b - sqrt(R2 * R2 - m2); L = layer(oc + rd * tF2, R2, 0.5, m2, fine); aF2 = L.a; C += T * L.a * L.rgb; T *= 1.0 - L.a; }
+      if (m2 < R3 * R3) { tF3 = -b - sqrt(R3 * R3 - m2); L = layer(oc + rd * tF3, R3, 1.0, m2, fine); aF3 = L.a; C += T * L.a * L.rgb; T *= 1.0 - L.a; }
+
+      // the heart: a soft haze that thickens toward the middle, and the world's own light glowing through it
+      float deep = max(1.0 - m2 / (R1 * R1), 0.0);
+      float haze = clamp((0.2 + 0.26 * still + 0.1 * storm + 0.1 * sunny) * deep * sqrt(deep) * quiet, 0.0, 0.7);
+      C += T * haze * mix(vBase, vLite, 0.25 + 0.4 * still);
+      T *= 1.0 - haze;
+      float core = (0.06 + 0.5 * sunny + 0.18 * still) * glow * quiet;
+      float g = clamp(core * exp(-m2 * 6.0), 0.0, 0.85);
+      C += T * g * mix(vLite, vec3(1.0), 0.2);
+      T *= 1.0 - g;
+
+      bool fineBack = fine && vLook.w < 380.0;
+      // the far sides are seen through everything nearer, so they are a little fainter
+      if (m2 < R3 * R3) { L = layer(oc + rd * (-b + sqrt(R3 * R3 - m2)), R3, 1.0, m2, fineBack); L.a *= 0.75; C += T * L.a * L.rgb; T *= 1.0 - L.a; }
+      if (m2 < R2 * R2) { L = layer(oc + rd * (-b + sqrt(R2 * R2 - m2)), R2, 0.5, m2, fineBack); L.a *= 0.7; C += T * L.a * L.rgb; T *= 1.0 - L.a; }
+      if (m2 < R1 * R1) { L = layer(oc + rd * (-b + sqrt(R1 * R1 - m2)), R1, 0.0, m2, false); L.a *= 0.6; C += T * L.a * L.rgb; T *= 1.0 - L.a; }
+
+      // motes: tiny lights drifting between the layers; looking ahead they rise, looking back they settle
+      float count = floor((1.0 + 9.0 * pow(joy, 1.6)) * mix(0.55, 1.0, inten) * mix(1.0, 0.6, vNest.w) + 0.5);
+      float speed = (0.01 + 0.035 * inten) * (0.25 + 0.75 * abs(look)) * mix(0.6, 1.0, joy);
+      float bright = mix(0.4, 1.0, joy) * mix(0.6, 1.0, inten) * quiet * min(glow * 1.3, 1.2);
+      float ms = max(0.024, 1.1 / vLook.w);                // never smaller than about a pixel
+      float ms2 = ms * ms;
+      vec3 moteCol = mix(vLite, vec3(1.0), mix(0.25, 0.6, joy));
+      for (int k = 0; k < 10; k++) {
+        if (float(k) >= count) break;
+        vec3 h = hash31(vNest.x * 97.0 + vNest.y * 13.0 + float(k) * 7.31);
+        float ph = fract(h.x + uTime * speed * (0.7 + 0.6 * h.y));
+        float y = look > 0.0 ? mix(0.62, -0.62, 1.0 - (1.0 - ph) * (1.0 - ph)) : mix(-0.62, 0.62, ph);
+        vec3 mp = vec3((h.y * 2.0 - 1.0) * 0.5, y, (h.z * 2.0 - 1.0) * 0.5);
+        vec3 rel = mp - oc;
+        float tc = dot(rel, rd);
+        vec3 offm = rel - rd * tc;
+        float q = dot(offm, offm) / ms2;
+        if (q > 40.0) continue;                            // nowhere near this line of sight
+        float alive = 4.0 * ph * (1.0 - ph) * (1.0 - smoothstep(0.38, 0.56, dot(mp, mp)));   // fades in and out, never pops
+        float dot0 = 1.0 / (1.0 + q * q);
+        float halo = 0.3 / (1.0 + q * 0.4) * (1.0 - q / 40.0);
+        // hidden a little by each near layer in front of it
+        float att = (tc > tF1 ? 1.0 - aF1 : 1.0) * (tc > tF2 ? 1.0 - aF2 : 1.0) * (tc > tF3 ? 1.0 - aF3 : 1.0);
+        float k2 = alive * bright * att;
+        C += (moteCol * dot0 + vBase * halo) * k2;
+        T *= 1.0 - clamp((dot0 * 0.85 + halo) * k2, 0.0, 1.0);
+      }
+
+      // the glass: light gathered on the far side, a soft coloured rim, a small soft highlight
+      vec3 nOut = oc + rd * t1;
+      float gather = pow(max(dot(nOut, -uKey), 0.0), 5.0) * (0.1 + 0.22 * glow) * quiet;
+      C += T * vLite * gather;
+      T *= 1.0 - gather * 0.7;
+      float fres = pow(1.0 - ndv, 3.5);
+      float rimA = fres * 0.34;
+      C = mix(vBase, vLite, 0.3) * rimA + C * (1.0 - rimA);
+      T *= 1.0 - rimA;
+      vec3 rf = reflect(rd, nIn);
+      float kz = dot(rf, uKey), ku = dot(rf, uKeyX) / max(kz, 0.05), kv = dot(rf, uKeyY) / max(kz, 0.05);
+      float pane = pow(abs(ku) / 0.22, 2.6) + pow(abs(kv) / 0.15, 2.6);   // a soft, round-cornered window, seen in the glass
+      float shine = (1.0 - smoothstep(0.1, 1.0, pane)) * smoothstep(0.5, 0.8, kz) * 0.34 + smoothstep(0.975, 0.997, dot(rf, uFill)) * 0.1;
+      C = vec3(shine) + C * (1.0 - shine);
+      T *= 1.0 - shine;
+      float alpha = 1.0 - T;
+      C = mix(C, vec3(alpha), vLook.z * 0.12);             // a lingering hover lifts it a touch
+      gl_FragColor = vec4(C, alpha) * (vLook.y * cover);
+    }`,
+  transparent: true,
+  premultipliedAlpha: true,
+  depthWrite: true,
+});
+const orbs = new THREE.InstancedMesh(orbGeo, orbMat, N);
+orbs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+orbs.frustumCulled = false;
+orbs.renderOrder = 2;
+scene.add(orbs);
+
+/* a soft coloured mist around each orb, like light bleeding into the air, so the glow reads on white. In the ball
+   only the orbs near its outline need it (elsewhere it would only cloud the glass), so the rest skip it. */
+const haloGeo = new THREE.PlaneGeometry(2, 2);
+const aAura = perOrb(1);
+haloGeo.setAttribute('aBase', aBase);
+haloGeo.setAttribute('aLite', aLite);
+haloGeo.setAttribute('aLook', aLook);
+haloGeo.setAttribute('aAura', aAura);
+const HALO = 2.8;                                 // how far the mist reaches, in orb radii
+const halos = new THREE.InstancedMesh(haloGeo, new THREE.ShaderMaterial({
+  uniforms: { uViewH: orbMat.uniforms.uViewH },
+  vertexShader: /* glsl */`
+    attribute vec3 aBase;
+    attribute vec3 aLite;
+    attribute vec4 aLook;
+    attribute float aAura;
+    uniform float uViewH;
+    varying vec2 vUv;
+    flat varying vec3 vColor;
+    flat varying vec4 vLook;
+    void main() {
+      vec4 c = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+      float px = length(instanceMatrix[0].xyz) * projectionMatrix[1][1] * 0.5 * uViewH / max(-c.z, 1e-3);
+      float aura = aAura * (1.0 - smoothstep(0.45, 0.8, px / (0.5 * uViewH)));   // when an orb nearly fills the view, the mist steps back
+      if (aura < 0.01) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }   // no mist here: nothing to draw
+      float s = length(instanceMatrix[0].xyz) * ${HALO.toFixed(2)};
+      c.xy += position.xy * s;
+      vUv = position.xy * ${HALO.toFixed(2)};
+      vColor = mix(aBase, aLite, 0.25);
+      vLook = vec4(aLook.x, aLook.y * aura, aLook.zw);
+      gl_Position = projectionMatrix * c;
+    }`,
+  fragmentShader: /* glsl */`
+    varying vec2 vUv;
+    flat varying vec3 vColor;
+    flat varying vec4 vLook;
+    void main() {
+      float d = length(vUv);                        // in orb radii
+      if (d > ${HALO.toFixed(2)}) discard;
+      float a = exp(-d * d / 1.9) * (1.0 - smoothstep(${(HALO * 0.7).toFixed(2)}, ${HALO.toFixed(2)}, d));
+      a *= 0.2 * min(vLook.x, 1.3) * vLook.y;
+      gl_FragColor = vec4(vColor, a);
+    }`,
+  transparent: true,
+  depthWrite: false,
+}), N);
+halos.instanceMatrix = orbs.instanceMatrix;      // same places, one upload
+halos.frustumCulled = false;
+halos.renderOrder = 1;
+scene.add(halos);
+
+/* the invisible floor: only a soft, light contact shadow under the ball shows. The shadow is worked out once a
+   frame into a small picture of the floor (it is soft, so 256 × 256 is plenty), and the floor simply shows it. */
+const uShade = { value: Array.from({ length: N }, () => new THREE.Vector4()) };   // per orb: x, z, sharpness, strength
+const uPool = { value: new THREE.Vector4(C0[0], C0[2], ballR * 0.7, 0.04) };      // x z, radius, strength
+const uRect = { value: new THREE.Vector4(C0[0], C0[2], 1, 1) };                   // the floor patch: centre x z, half width, half depth
+const shadowRT = new THREE.WebGLRenderTarget(256, 256, { depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false });
+const shadowScene = new THREE.Scene();
+const shadowCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+shadowScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+  uniforms: { uShade, uCol, uPool, uRect },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform vec4 uShade[${N}];
+    uniform vec3 uCol[${N}];
+    uniform vec4 uPool;
+    uniform vec4 uRect;
+    varying vec2 vUv;
+    void main() {
+      vec2 w = vec2(uRect.x + (vUv.x * 2.0 - 1.0) * uRect.z, uRect.y - (vUv.y * 2.0 - 1.0) * uRect.w);   // this spot on the floor
+      float lit = 1.0;
+      vec3 tint = vec3(0.0);
+      float tw = 0.0;
+      for (int i = 0; i < ${N}; i++) {
+        vec4 o = uShade[i];
+        vec2 d = w - o.xy;
+        float e = dot(d, d) * o.z;
+        if (e > 9.0 || o.w <= 0.0) continue;
+        float k = exp(-e) * o.w;
+        lit *= 1.0 - k;
+        tint += uCol[i] * k;
+        tw += k;
+      }
+      vec2 pd = w - uPool.xy;
+      float pool = exp(-dot(pd, pd) / (uPool.z * uPool.z)) * uPool.w;   // a gentle pool of shade right under the ball
+      float shade = 1.0 - lit * (1.0 - pool);
+      vec3 base = vec3(0.24, 0.26, 0.33);
+      vec3 col = mix(base, (tw > 0.0 ? tint / tw : base) * 0.7, 0.35);   // glass throws a faintly coloured shadow
+      gl_FragColor = vec4(col, shade);
+    }`,
+  depthTest: false,
+  depthWrite: false,
+})));
+const floorMat = new THREE.ShaderMaterial({
+  uniforms: { uShadow: { value: shadowRT.texture } },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D uShadow;
+    varying vec2 vUv;
+    void main() {
+      vec4 s = texture2D(uShadow, vUv);
+      vec2 e = min(vUv, 1.0 - vUv);
+      gl_FragColor = vec4(s.rgb, s.a * 0.5 * smoothstep(0.0, 0.04, min(e.x, e.y)));   // nothing at the patch's edges
+    }`,
+  transparent: true,
+  depthWrite: false,
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), floorMat);   // sized each frame to where shadow can fall
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = floorY;
+floor.renderOrder = 0;
+scene.add(floor);
+
+/* streaks: every link in one geometry, drawn by one shader that runs light along it */
+const SEG = 28;
+const streakGeo = new THREE.BufferGeometry();
+{
+  const vcount = links.length * (SEG + 1) * 2;
+  const ends = new Float32Array(vcount * 2), along = new Float32Array(vcount), side = new Float32Array(vcount), seed = new Float32Array(vcount);
+  const index = [];
+  let v = 0;
+  links.forEach((L, li) => {
+    const rnd = seeded(li * 977 + 5);
+    const sd = rnd();
+    const base = v;
+    for (let k = 0; k <= SEG; k++) {
+      for (const sgn of [-1, 1]) {
+        ends[v * 2] = L.a; ends[v * 2 + 1] = L.b;
+        along[v] = k / SEG; side[v] = sgn; seed[v] = sd;
+        v++;
+      }
+      if (k < SEG) {
+        const q = base + k * 2;
+        index.push(q, q + 1, q + 2, q + 1, q + 3, q + 2);
+      }
+    }
+  });
+  streakGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vcount * 3), 3));
+  streakGeo.setAttribute('aEnds', new THREE.BufferAttribute(ends, 2));
+  streakGeo.setAttribute('aT', new THREE.BufferAttribute(along, 1));
+  streakGeo.setAttribute('aSide', new THREE.BufferAttribute(side, 1));
+  streakGeo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  streakGeo.setIndex(index);
+}
+const streakMat = new THREE.ShaderMaterial({
+  uniforms: { uOrb, uCol, uR: { value: R }, uTime: { value: 0 }, uAlpha: { value: 0 }, uWidth: { value: 0.015 } },
+  vertexShader: /* glsl */`
+    uniform vec4 uOrb[${N}];
+    uniform vec3 uCol[${N}];
+    uniform float uR;
+    uniform float uWidth;
+    attribute vec2 aEnds;
+    attribute float aT;
+    attribute float aSide;
+    attribute float aSeed;
+    varying float vT;
+    varying float vSide;
+    varying float vSeed;
+    varying float vLen;
+    varying float vFade;
+    varying vec3 vCol;
+    void main() {
+      int ia = int(aEnds.x + 0.5);
+      int ib = int(aEnds.y + 0.5);
+      vec3 A = uOrb[ia].xyz;
+      vec3 B = uOrb[ib].xyz;
+      vec3 d = B - A;
+      float L = max(length(d), 1e-4);
+      vec3 dir = d / L;
+      A += dir * uR * 1.2;                      // start and end at the glass, not the centres
+      B -= dir * uR * 1.2;
+      vec3 up = abs(dir.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+      vec3 bend = normalize(cross(dir, up)) * (aSeed > 0.5 ? 1.0 : -1.0);
+      float bow = 0.07 * L;                     // a gentle bow, so links never look like stiff rods
+      vec3 P = mix(A, B, aT) + bend * sin(3.14159 * aT) * bow;
+      vec3 tangent = normalize((B - A) + bend * cos(3.14159 * aT) * 3.14159 * bow);
+      vec3 toCam = normalize(cameraPosition - P);
+      P += normalize(cross(tangent, toCam)) * aSide * uWidth;
+      vT = aT;
+      vSide = aSide;
+      vSeed = aSeed;
+      vLen = L;
+      vFade = min(uOrb[ia].w, uOrb[ib].w);
+      vCol = mix(uCol[ia], uCol[ib], aT);
+      gl_Position = projectionMatrix * viewMatrix * vec4(P, 1.0);
+    }`,
+  fragmentShader: /* glsl */`
+    uniform float uTime;
+    uniform float uAlpha;
+    varying float vT;
+    varying float vSide;
+    varying float vSeed;
+    varying float vLen;
+    varying float vFade;
+    varying vec3 vCol;
+    void main() {
+      float across = 1.0 - smoothstep(0.25, 1.0, abs(vSide));
+      float ends = smoothstep(0.0, 0.1, vT) * (1.0 - smoothstep(0.9, 1.0, vT));
+      float s = fract(vT * max(1.0, floor(vLen * 0.8 + 0.5)) - uTime * 0.16 + vSeed * 7.31);
+      float streak = smoothstep(0.35, 0.93, s) * (1.0 - smoothstep(0.93, 1.0, s));   // a soft tail, a bright head
+      float a = (0.1 + 0.52 * streak) * across * ends * uAlpha * vFade;
+      gl_FragColor = vec4(mix(vCol, vCol * vCol, 0.35), a);
+    }`,
+  transparent: true,
+  depthWrite: false,
+});
+const streaks = new THREE.Mesh(streakGeo, streakMat);
+streaks.frustumCulled = false;
+streaks.renderOrder = 3;
+streaks.visible = false;
+scene.add(streaks);
+
+/* ---------- camera ---------- */
+// my own smooth wheel zoom goes in before the orbit controls, so their instant zoom steps never run
+let zoomGoal = null;
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (drone.active || camMove || modal.open) return;
+  const r = camera.position.distanceTo(controls.target);
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+  zoomGoal = clamp((zoomGoal ?? r) * Math.exp(clamp(e.deltaY * unit, -240, 240) * 0.0012), controls.minDistance, controls.maxDistance);
+  touched();
+}, { passive: false });
+
+const pointer = { x: -1, y: -1, inside: false, type: 'mouse', down: null, dragging: false, lastT: 0 };
+canvas.addEventListener('pointerdown', e => {         // registered before the orbit controls on purpose
+  pointer.type = e.pointerType;
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  pointer.down = { x: e.clientX, y: e.clientY, t: performance.now() };
+  pointer.dragging = false;
+  push.goal = 0;
+  touched();
+  if (!drone.active && (mode === 'ball' || mode === 'field')) {
+    const i = pick(e.clientX, e.clientY, e.pointerType === 'touch' ? 1.5 : 1.04);
+    if (i >= 0) tick('press', { pitch: orbPitch(i), pan: panAt(e.clientX) });
+  }
+});
+const orbPitch = i => 0.9 + 0.12 * items[i].e.mood;   // brighter mornings click a touch higher
+const panAt = x => clamp((x / innerWidth) * 2 - 1, -1, 1) * 0.45;
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.075;
+controls.rotateSpeed = 0.55;
+controls.enablePan = false;
+controls.minDistance = 0.9;
+controls.maxDistance = 14;
+controls.minPolarAngle = 0.15;
+controls.maxPolarAngle = Math.PI * 0.5;
+controls.addEventListener('start', () => { zoomGoal = null; touched(); });
+
+const ballTarget = new THREE.Vector3(C0[0], C0[1] - 0.05, C0[2]);
+const fieldTarget = new THREE.Vector3();          // the middle of where the orbs actually are, out in the field
+{
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < N; i++) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], FP[i * 3 + a]); hi[a] = Math.max(hi[a], FP[i * 3 + a]); }
+  fieldTarget.set((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2);
+}
+const VIEW = { phi: 1.2, theta: 0.42 };
+function fitDistance(radius) {
+  const v = THREE.MathUtils.degToRad(camera.fov / 2);
+  const h = Math.atan(Math.tan(v) * camera.aspect);
+  const roomy = camera.aspect < 0.8 ? 1.16 : 1.5;     // phones use more of their narrow screen
+  return radius * roomy / Math.sin(Math.min(v, h));
+}
+const ballDist = () => fitDistance(ballR + 0.04);
+function fieldDist() {                               // near enough that the whole field fills the view, with room for the bars
+  const v = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), h = v * camera.aspect;
+  const across = (FX + R * 2) / (h * 0.86);
+  const tall = (FY * Math.sin(VIEW.phi) + FZ * Math.cos(VIEW.phi) + R * 2) / (v * 0.72);
+  return Math.max(across, tall) + FZ * 0.55;
+}
+const zoomLimits = () => { controls.maxDistance = Math.max(ballDist() * 3, fieldDist() * 1.6); };   // narrow phones need to stand further back
+zoomLimits();
+camera.position.setFromSpherical(new THREE.Spherical(ballDist(), VIEW.phi, VIEW.theta)).add(ballTarget);
+controls.target.copy(ballTarget);
+camera.lookAt(ballTarget);
+controls.update();
+
+let camMove = null;
+function flyTo(target, radius, phi, theta, ms) {     // orbit-style move: the camera swings round, never cuts across
+  const s0 = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  const dth = Math.atan2(Math.sin(theta - s0.theta), Math.cos(theta - s0.theta));
+  camMove = {
+    kind: 'orbit', t0: performance.now(), dur: T(ms),
+    from: controls.target.clone(), to: target.clone(),
+    r0: s0.radius, r1: radius, p0: s0.phi, p1: clamp(phi, controls.minPolarAngle, controls.maxPolarAngle),
+    th0: s0.theta, dth,
+  };
+  zoomGoal = null;
+}
+function flyPose(pos, target, ms, done) {            // free move (after the drone): position and gaze ease together
+  const q1 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, target, camera.up));
+  camMove = { kind: 'pose', t0: performance.now(), dur: T(ms), p0: camera.position.clone(), p1: pos.clone(), q0: camera.quaternion.clone(), q1, target: target.clone(), done };
+  zoomGoal = null;
+}
+const _sph = new THREE.Spherical();
+function updateCamMove(now) {
+  const m = camMove;
+  if (!m) return;
+  const k = easeInOut(clamp((now - m.t0) / m.dur, 0, 1));
+  if (m.kind === 'orbit') {
+    controls.target.lerpVectors(m.from, m.to, k);
+    _sph.set(lerp(m.r0, m.r1, k), lerp(m.p0, m.p1, k), m.th0 + m.dth * k);
+    camera.position.setFromSpherical(_sph).add(controls.target);
+    camera.lookAt(controls.target);
+  } else {
+    camera.position.lerpVectors(m.p0, m.p1, k);
+    camera.quaternion.slerpQuaternions(m.q0, m.q1, k);
+  }
+  if (k >= 1) {
+    camMove = null;
+    if (m.kind === 'pose') { controls.target.copy(m.target); camera.lookAt(m.target); }
+    m.done?.();
+  }
+}
+function cameraAngles() { return new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)); }
+
+/* idle drift: after a quiet spell the view turns very slowly (never with reduced motion) */
+let lastTouch = performance.now(), spin = 0;
+function touched() { lastTouch = performance.now(); }
+
+/* ---------- per-frame orb looks ---------- */
+const order = Array.from({ length: N }, (_, i) => i);
+const depth = new Float64Array(N);
+const _cd = new THREE.Vector3();
+const _m = new THREE.Matrix4();
+const focus = { id: -1, pulse: -1, shownAt: 0, travelling: false };
+const hover = { id: -1, since: 0 };
+const modal = { open: false, closing: false, id: -1, revealAt: 0, anims: [] };
+let clock = 0;
+
+let staged = null;                // only for the automated look-over's close-up picture: the orbs on stage
+function fadeGoalOf(i, now) {
+  if (staged && !staged.has(i)) return 0;
+  if (modal.open && modal.id === i && !(modal.closing && now >= modal.revealAt)) return 0;
+  if (focus.id >= 0 && i !== focus.id) return 0.2;
+  return 1;
+}
+function updateLooks(dt, now) {
+  for (let i = 0; i < N; i++) {
+    const it = items[i];
+    const goal = fadeGoalOf(i, now);
+    const hiding = modal.open && modal.id === i;
+    spring(it.fade, goal, hiding ? (modal.closing ? 14 : 20) : 8, dt);
+    it.fade.x = clamp(it.fade.x, 0, 1);
+    it.lift = damp(it.lift, i === hover.id || (drone.active && i === drone.look) ? 1 : 0, 9, dt);
+    let scale = 1, boost = 0;
+    if (i === focus.id && focus.pulse >= 0) {
+      const u = (now - focus.pulse) / T(900);
+      if (u < 1) {
+        const bump = Math.sin(Math.PI * easeInOut(clamp(u, 0, 1)));
+        scale += bump * (calm ? 0.05 : 0.13);
+        boost = bump * 0.45;
+      }
+    }
+    it.scale = scale;
+    it.glowNow = it.glow * (calm ? 1 : 1 + 0.03 * Math.sin(clock * 0.8 + it.phase * 6.283)) + boost + (i === focus.id ? 0.12 : 0);
+  }
+}
+function writeInstances() {
+  // Farthest first, so the glass layers blend right. Ordering by the eye's distance to each orb's surface
+  // ("power") is exact for round orbs that do not overlap, so two orbs only ever swap places when neither
+  // is in front of the other on screen: no flicker, no popping.
+  const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z;
+  for (let i = 0; i < N; i++) {
+    const dx = P[i * 3] - cx, dy = P[i * 3 + 1] - cy, dz = P[i * 3 + 2] - cz, r = R * items[i].scale;
+    depth[i] = dx * dx + dy * dy + dz * dz - r * r;
+  }
+  order.sort((a, b) => depth[b] - depth[a] || a - b);
+  const base = aBase.array, deep = aDeep.array, lite = aLite.array, look = aLook.array, world = aWorld.array, nest = aNest.array, aura = aAura.array;
+  const toCam = _cd.set(cx - C0[0], cy - C0[1], cz - C0[2]).normalize();
+  for (let s = 0; s < N; s++) {
+    const i = order[s], it = items[i], sc = R * it.scale;
+    const toward = ((P[i * 3] - C0[0]) * toCam.x + (P[i * 3 + 1] - C0[1]) * toCam.y + (P[i * 3 + 2] - C0[2]) * toCam.z) / ballR;
+    const u = clamp((toward + 0.5) / 0.6, 0, 1), detail = lerp(0.55 + 0.45 * u * u * (3 - 2 * u), 1, spread);
+    _m.makeScale(sc, sc, sc).setPosition(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+    orbs.setMatrixAt(s, _m);
+    for (let a = 0; a < 3; a++) { base[s * 3 + a] = it.col[a]; deep[s * 3 + a] = it.deepCol[a]; lite[s * 3 + a] = it.liteCol[a]; }
+    look[s * 4] = it.glowNow; look[s * 4 + 1] = it.fade.x; look[s * 4 + 2] = it.lift; look[s * 4 + 3] = detail;
+    for (let a = 0; a < 4; a++) { world[s * 4 + a] = it.world[a]; nest[s * 4 + a] = it.nest[a]; }
+    // the mist shows around the ball's outline, around the chosen orb, and around every orb out in the field
+    const ox = P[i * 3] - C0[0] - toCam.x * toward * ballR, oy = P[i * 3 + 1] - C0[1] - toCam.y * toward * ballR, oz = P[i * 3 + 2] - C0[2] - toCam.z * toward * ballR;
+    const side = clamp((Math.hypot(ox, oy, oz) / ballR - 0.42) / 0.3, 0, 1);
+    aura[s] = i === focus.id ? 1 : lerp(side * side * (3 - 2 * side), 1, spread);
+  }
+  orbs.instanceMatrix.needsUpdate = true;
+  for (const attr of [aBase, aDeep, aLite, aLook, aWorld, aNest, aAura]) attr.needsUpdate = true;
+  for (let i = 0; i < N; i++) {
+    uOrb.value[i].set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2], items[i].fade.x);
+    // the shadow each orb drops: the higher it floats, the softer and fainter
+    const h = P[i * 3 + 1] - floorY, s = R * 1.25 + Math.max(h, 0) * 0.1;
+    uShade.value[i].set(P[i * 3], P[i * 3 + 2], 1 / (s * s), h > 0 ? 0.3 * Math.pow(R / s, 0.8) * Math.exp(-h * 3.2) * items[i].fade.x : 0);
+  }
+}
+
+/* ---------- where things are on screen ---------- */
+const _v = new THREE.Vector3();
+function screenOf(i) {
+  _v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+  const dist = _v.distanceTo(camera.position);
+  _v.project(camera);
+  const r = R * items[i].scale / (Math.max(dist, 1e-3) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * innerHeight / 2;
+  return { x: (_v.x + 1) / 2 * innerWidth, y: (1 - _v.y) / 2 * innerHeight, r, behind: _v.z > 1 };
+}
+const raycaster = new THREE.Raycaster();
+const _ndc = new THREE.Vector2();
+function rayAt(x, y) {
+  _ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(_ndc, camera);
+  return raycaster.ray;
+}
+function pick(x, y, slack = 1.04) {
+  const ray = rayAt(x, y), o = ray.origin, d = ray.direction;
+  let best = -1, bestT = Infinity;
+  for (let i = 0; i < N; i++) {
+    if (items[i].fade.x < 0.05) continue;            // hidden while it is the open card
+    const rx = P[i * 3] - o.x, ry = P[i * 3 + 1] - o.y, rz = P[i * 3 + 2] - o.z;
+    const t = rx * d.x + ry * d.y + rz * d.z;
+    const rr = (R * items[i].scale * slack) ** 2, m2 = rx * rx + ry * ry + rz * rz - t * t;
+    if (m2 > rr) continue;
+    const th = t - Math.sqrt(rr - m2);
+    if (th > 0 && th < bestT) { bestT = th; best = i; }
+  }
+  return best;
+}
+
+/* ---------- titles that float above an orb ---------- */
+function makeTip(node) { return { node, title: node.querySelector('.tip-title'), chips: node.querySelector('.tip-chips'), id: -1, tags: false, shown: false }; }
+const tips = { hover: makeTip($('#tipHover')), focus: makeTip($('#tipFocus')) };
+function chipList(parent, tags, cls = 'chip') {
+  parent.replaceChildren(...tags.map(k => el('span', cls, tagLabel(k))));
+}
+function tipShow(tip, i, withTags) {
+  if (tip.id !== i || tip.tags !== withTags || !tip.shown) {
+    if (tip.id !== i || tip.tags !== withTags) {
+      tip.title.textContent = items[i].title;
+      chipList(tip.chips, withTags ? items[i].tags : []);
+    }
+    tip.id = i; tip.tags = withTags;
+    placeTip(tip);
+    tip.node.classList.add('show');
+    tip.shown = true;
+  }
+}
+function tipHide(tip) { if (tip.shown) { tip.node.classList.remove('show'); tip.shown = false; } }
+function placeTip(tip) {
+  if (tip.id < 0) return;
+  const s = screenOf(tip.id);
+  tip.node.style.transform = `translate3d(${s.x.toFixed(1)}px, ${(s.y - s.r - 9).toFixed(1)}px, 0)`;
+  tip.node.style.visibility = s.behind ? 'hidden' : '';
+}
+
+/* ---------- pointer: orbit, push, linger, click ---------- */
+function setPushRay(x, y) { const ray = rayAt(x, y); push.o.copy(ray.origin); push.d.copy(ray.direction); }
+canvas.addEventListener('pointermove', e => {
+  const now = performance.now();
+  const dx = e.clientX - pointer.x, dy = e.clientY - pointer.y;
+  const gap = Math.max(4, now - pointer.lastT);
+  const fresh = pointer.lastT === 0 || !pointer.inside;
+  pointer.x = e.clientX; pointer.y = e.clientY; pointer.lastT = now; pointer.inside = true; pointer.type = e.pointerType;
+  if (pointer.down && !pointer.dragging && Math.hypot(e.clientX - pointer.down.x, e.clientY - pointer.down.y) > 5) {
+    pointer.dragging = true;
+    if (!drone.active) { camMove = null; canvas.classList.add('dragging'); }
+  }
+  touched();
+  if (drone.active) { droneLook(e, dx, dy); return; }
+  if (e.pointerType === 'mouse' && !pointer.down && !fresh && mode === 'ball') {
+    const speed = Math.hypot(dx, dy) / gap * 1000;   // pixels a second
+    push.goal = clamp((speed - 60) / 800, 0, 2.5);   // a slow pass is gentle; a quick swipe parts the orbs
+    push.last = now;
+    setPushRay(e.clientX, e.clientY);
+  }
+});
+canvas.addEventListener('pointerup', e => {
+  const d = pointer.down, wasDrag = pointer.dragging;
+  pointer.down = null; pointer.dragging = false;
+  canvas.classList.remove('dragging');
+  if (!d || wasDrag || performance.now() - d.t > 800) return;
+  onTap(e.clientX, e.clientY, e.pointerType);
+});
+canvas.addEventListener('pointercancel', () => { pointer.down = null; pointer.dragging = false; canvas.classList.remove('dragging'); });
+canvas.addEventListener('pointerleave', () => { pointer.inside = false; push.goal = 0; });
+
+function onTap(x, y, type) {
+  if (drone.active) { droneClick(); return; }
+  if (mode === 'toField' || mode === 'toBall') return;
+  const i = pick(x, y, type === 'touch' ? 1.5 : 1.04);
+  if (i >= 0) { tick('release', { pitch: orbPitch(i), pan: panAt(x) }); openModal(i); }
+  else if (focus.id >= 0) clearFocus();
+}
+
+function updatePush(dt, now) {
+  if (now - push.last > 70) push.goal = 0;
+  if (mode !== 'ball' || pointer.down || modal.open) push.goal = 0;
+  push.amt = damp(push.amt, push.goal, push.goal > push.amt ? 12 : 9, dt);
+  if (push.amt < 0.002) { push.amt = push.goal > 0 ? push.amt : 0; return; }
+  // only wake the ball when the mouse ray actually passes near it
+  const o = push.o, d = push.d;
+  const bx = C0[0] - o.x, by = C0[1] - o.y, bz = C0[2] - o.z;
+  const tc = bx * d.x + by * d.y + bz * d.z, m2 = bx * bx + by * by + bz * bz - tc * tc;
+  if (m2 < (ballR + REACH) ** 2) wake();
+}
+
+function updateHover(now) {
+  const can = pointer.inside && pointer.type === 'mouse' && !pointer.dragging && !pointer.down && !modal.open && !drone.active && (mode === 'ball' || mode === 'field');
+  let h = -1;
+  if (can) {
+    // stay with the orb you are resting on, even if a nudge moves it a hair
+    const k = hover.id;
+    if (k >= 0 && items[k].fade.x > 0.05) {
+      const ray = rayAt(pointer.x, pointer.y);
+      _v.set(P[k * 3], P[k * 3 + 1], P[k * 3 + 2]).sub(ray.origin);
+      const t = _v.dot(ray.direction), gap = Math.sqrt(Math.max(0, _v.lengthSq() - t * t));
+      if (t > 0 && gap < R * items[k].scale * 1.35) h = k;
+    }
+    if (h < 0) h = pick(pointer.x, pointer.y);
+  }
+  if (h !== hover.id) { hover.id = h; hover.since = now; tipHide(tips.hover); }
+  canvas.classList.toggle('hot', h >= 0);
+  if (h >= 0 && h !== focus.id && now - hover.since >= 400) tipShow(tips.hover, h, false);   // only a hover that lingers
+}
+
+/* ---------- search: the pill that grows into a card ---------- */
+const finder = $('#finder'), input = $('#q'), resultsEl = $('#results'), noteEl = $('#note');
+let results = [], activeRow = 0;
+const STOP = new Set(('a an and are as at be but by for from had has have i im in into is it its me my of on or our so than that the ' +
+  'then there these they this to too us was we were what when where which who will with you your about just very really').split(' '));
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const wordsOf = s => norm(s).split(/[^a-z0-9]+/).filter(w => w.length > 1 || /\d/.test(w));
+function osa(a, b) {                       // edit distance that also forgives swapped letters
+  const m = a.length, n = b.length;
+  const d = Array.from({ length: m + 1 }, (_, i) => { const r = new Array(n + 1).fill(0); r[0] = i; return r; });
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[m][n];
+}
+const likeCache = new Map();
+function likeness(q, w) {                  // 1 = the same word … 0 = nothing alike
+  if (q === w) return 1;
+  const key = q + '|' + w;
+  const hit = likeCache.get(key);
+  if (hit !== undefined) return hit;
+  const lq = q.length, lw = w.length;
+  let s = 0;
+  if (lq >= 3 && w.startsWith(q)) s = 0.9 - Math.min(0.25, (lw - lq) * 0.03);          // still typing: "exhau" → "exhausted"
+  else if (lw >= 4 && q.startsWith(w)) s = 0.86 - Math.min(0.2, (lq - lw) * 0.04);     // "tiredness" → "tired"
+  else if (lq >= 4 && lw >= 3 && Math.abs(lq - lw) <= 3) s = Math.max(0, 1 - osa(q, w) / Math.max(lq, lw));
+  likeCache.set(key, s);
+  return s;
+}
+function phraseLikeness(qAll, qJoined, parts) {
+  if (parts.length === 1) { let b = 0; for (const q of qAll) b = Math.max(b, likeness(q, parts[0])); return b; }
+  if ((' ' + qJoined + ' ').includes(' ' + parts.join(' ') + ' ')) return 1;
+  let best = 0;
+  for (let s = 0; s + parts.length <= qAll.length; s++) {
+    let sum = 0;
+    for (let k = 0; k < parts.length; k++) sum += likeness(qAll[s + k], parts[k]);
+    best = Math.max(best, sum / parts.length);
+  }
+  return best;
+}
+const FIELD_WEIGHT = { tags: 1, theme: 1, gist: 0.9, quote: 0.8, text: 0.75 };
+const searchIndex = items.map(it => ({
+  tags: [...new Set(it.tags.flatMap(k => wordsOf(tagLabel(k)).concat(wordsOf(k))))],
+  theme: wordsOf(it.e.theme),
+  gist: [...new Set(wordsOf(it.e.gist))],
+  quote: [...new Set(wordsOf(it.e.quote))],
+  text: [...new Set(wordsOf(it.e.text))],
+  raw: ' ' + wordsOf([it.e.gist, it.e.quote, it.e.theme, it.e.text].join(' ')).join(' ') + ' ',
+}));
+const lexicon = [];
+for (const [theme, list] of Object.entries(LEX.themes || {})) {
+  const phrases = new Set([theme, ...(list || [])]);
+  wordsOf(tagLabel(theme)).filter(w => !STOP.has(w)).forEach(w => phrases.add(w));
+  for (const p of phrases) { const parts = wordsOf(p); if (parts.length) lexicon.push({ theme, parts, phrase: parts.join(' ') }); }
+}
+const leanWords = Object.entries(LEX.leans || {}).map(([w, axes]) => ({ parts: wordsOf(w), axes })).filter(l => l.parts.length);
+const LEAN_WORDS = { mood: ['leans painful', 'leans joyful'], life: ['personal', 'about work'], time: ['looking ahead', 'looking back'] };
+
+function searchMornings(query) {
+  const qAll = wordsOf(query);
+  if (!qAll.length) return [];
+  const qKey = qAll.filter(w => !STOP.has(w)).length ? qAll.filter(w => !STOP.has(w)) : qAll;
+  const qJoined = qAll.join(' ');
+  // like terms: which themes does the query sound like?
+  const themeHit = {};
+  for (const L of lexicon) {
+    const s = phraseLikeness(qAll, qJoined, L.parts);
+    if (s >= 0.8 && (!themeHit[L.theme] || s > themeHit[L.theme].s)) themeHit[L.theme] = { s, word: L.phrase };
+  }
+  // words that clearly lean one way on the three scales
+  const lean = {};
+  for (const L of leanWords) {
+    const s = phraseLikeness(qAll, qJoined, L.parts);
+    if (s < 0.86) continue;
+    for (const [ax, v] of Object.entries(L.axes)) if (!lean[ax] || s > lean[ax].s) lean[ax] = { v, s };
+  }
+  const leanAxes = Object.keys(lean);
+  const out = items.map((it, k) => {
+    const ix = searchIndex[k];
+    let text = 0, fuzzy = '';
+    for (const q of qKey) {
+      let best = 0, bw = '';
+      for (const f in FIELD_WEIGHT) for (const w of ix[f]) { const s = likeness(q, w) * FIELD_WEIGHT[f]; if (s > best) { best = s; bw = w; } }
+      text += best >= 0.62 ? best : best * 0.35;
+      if (best >= 0.62 && bw !== q && !bw.startsWith(q)) fuzzy = bw;
+    }
+    text /= qKey.length;
+    if (qJoined.length >= 4 && ix.raw.includes(' ' + qJoined)) text = Math.min(1, text + 0.15);
+    let lex = 0, lexWhy = '';
+    for (const t of it.tags) {
+      const h = themeHit[t];
+      if (h && h.s * 0.92 > lex) { lex = h.s * 0.92; lexWhy = `like: ${h.word} → ${tagShort(t)}`; }
+    }
+    let close = -1;
+    if (leanAxes.length) {
+      let c = 0;
+      for (const ax of leanAxes) c += 1 - Math.abs(clamp(it.e[ax] ?? 0, -1, 1) - lean[ax].v) / 2;
+      close = (c / leanAxes.length) ** 2;
+    }
+    const base = Math.min(1, Math.max(text, lex) + 0.12 * Math.min(text, lex));   // says the word AND is in the like-theme: ranks first
+    const score = close < 0 ? base : base >= 0.7 ? 0.8 * base + 0.2 * close : 0.5 * base + 0.5 * close;
+    let why = '';
+    if (lex > 0 && lex >= text - 0.02) why = lexWhy;
+    else if (fuzzy && text >= 0.55) why = `close to “${fuzzy}”`;
+    else if (close >= 0 && base < 0.6) { const ax = leanAxes[0]; why = LEAN_WORDS[ax][lean[ax].v > 0 ? 1 : 0]; }
+    return { k, score, why };
+  });
+  out.sort((a, b) => b.score - a.score || items[b.k].e.intensity - items[a.k].e.intensity || b.k - a.k);
+  return out.slice(0, 10);
+}
+
+function renderResults() {
+  const rows = results.map((r, idx) => {
+    const it = items[r.k];
+    const li = el('li', 'res' + (idx === activeRow ? ' on' : ''));
+    li.id = 'res-' + idx;
+    li.setAttribute('role', 'option');
+    li.setAttribute('aria-selected', idx === activeRow ? 'true' : 'false');
+    const dot = el('span', 'mood-dot');
+    dot.style.setProperty('--c', it.css);
+    const main = el('div', 'res-main');
+    const top = el('div', 'res-top');
+    top.append(el('span', 'res-date', fmtRow.format(it.date)), el('span', 'res-gist', it.e.gist || it.theme));
+    const sub = el('div', 'res-sub');
+    it.tags.forEach(k => sub.append(el('span', 'chip', tagLabel(k))));
+    if (r.why) sub.append(el('span', 'why', r.why));
+    main.append(top, sub);
+    li.append(dot, main);
+    li.addEventListener('pointerdown', ev => ev.preventDefault());   // keep the typing box focused
+    li.addEventListener('click', () => choose(idx));
+    talky(li, 1.18);
+    li.addEventListener('pointermove', () => { if (activeRow !== idx) { activeRow = idx; markActive(); } });
+    return li;
+  });
+  resultsEl.replaceChildren(...rows);
+  noteEl.textContent = results.length && results[0].score < 0.42 ? 'Nothing close, so here are the nearest mornings.' : '';
+  input.setAttribute('aria-activedescendant', results.length ? 'res-' + activeRow : '');
+}
+function markActive() {
+  [...resultsEl.children].forEach((li, idx) => { li.classList.toggle('on', idx === activeRow); li.setAttribute('aria-selected', idx === activeRow ? 'true' : 'false'); });
+  input.setAttribute('aria-activedescendant', 'res-' + activeRow);
+  resultsEl.children[activeRow]?.scrollIntoView({ block: 'nearest' });
+}
+function openDrawer() { if (results.length) { finder.classList.add('open'); input.setAttribute('aria-expanded', 'true'); } }
+function closeDrawer() { finder.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); }
+function runSearch() {
+  const q = input.value;
+  finder.classList.toggle('has-text', q.length > 0);
+  results = q.trim() ? searchMornings(q) : [];
+  activeRow = 0;
+  renderResults();
+  if (results.length && document.activeElement === input) {
+    openDrawer();
+    const now = performance.now();
+    if (now - sound.lastList > 140) { sound.lastList = now; tick('release', { pitch: 1.6, level: 0.22 }); }   // a very faint tick as results appear
+  } else closeDrawer();
+}
+function choose(idx) {
+  const r = results[idx];
+  if (!r) return;
+  closeDrawer();
+  input.blur();
+  focusOrb(r.k);
+}
+input.addEventListener('input', runSearch);
+input.addEventListener('focus', () => { finder.classList.add('wide'); if (input.value.trim()) openDrawer(); });
+input.addEventListener('blur', () => { finder.classList.remove('wide'); });
+input.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!results.length) return;
+    e.preventDefault();
+    if (!finder.classList.contains('open')) { openDrawer(); return; }
+    activeRow = (activeRow + (e.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length;
+    markActive();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (!e.repeat && results.length) { tick('press', { pitch: 1.18 }); tick('release', { pitch: 1.18, delay: 0.08 }); }
+    choose(activeRow);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    if (finder.classList.contains('open')) closeDrawer(); else input.blur();
+  }
+});
+$('#clear').addEventListener('click', () => { input.value = ''; runSearch(); input.focus(); });
+document.addEventListener('pointerdown', e => { if (!finder.contains(e.target)) closeDrawer(); }, true);
+
+/* ---------- focus: bring one morning to the surface ---------- */
+function focusOrb(i, quiet) {
+  if (drone.active || mode === 'toField' || mode === 'toBall') return;
+  if (focus.id >= 0 && focus.id !== i) releaseHold();
+  focus.id = i;
+  focus.pulse = -1;
+  focus.shownAt = performance.now() + T(500);
+  tipHide(tips.hover);
+  if (mode === 'ball') {
+    // the spot on the ball's surface that faces you; the orb rises there and the rest make way
+    // it trades places with the orb whose place reaches furthest toward you, so the ball stays round
+    const dir = camera.position.clone().sub(new THREE.Vector3(...C0)).normalize();
+    let j = -1, reach = -Infinity;
+    for (let k = 0; k < N; k++) {
+      const s = (home[k * 3] - C0[0]) * dir.x + (home[k * 3 + 1] - C0[1]) * dir.y + (home[k * 3 + 2] - C0[2]) * dir.z;
+      if (s > reach) { reach = s; j = k; }
+    }
+    if (j >= 0 && j !== i) {
+      for (let a = 0; a < 3; a++) { const t = home[i * 3 + a]; home[i * 3 + a] = home[j * 3 + a]; home[j * 3 + a] = t; }
+      releaseMate();
+      sim.mate = j; W[j] = 0;
+      sim.mv = [V[j * 3], V[j * 3 + 1], V[j * 3 + 2]];
+    }
+    const hx = home[i * 3] - C0[0], hy = home[i * 3 + 1] - C0[1], hz = home[i * 3 + 2] - C0[2], hl = Math.hypot(hx, hy, hz) || 1;
+    const lift = hl + R * 0.3;    // a little proud of the surface while it is chosen
+    sim.goal = [C0[0] + hx / hl * lift, C0[1] + hy / hl * lift, C0[2] + hz / hl * lift];
+    if (sim.hold !== i) sim.hv = [V[i * 3], V[i * 3 + 1], V[i * 3 + 2]];
+    sim.hold = i; W[i] = 0; sim.arrived = false;
+    focus.travelling = true;
+    stir();
+    if (!quiet) {
+      const s = cameraAngles();
+      if (s.radius > ballDist() * 1.02) flyTo(controls.target, ballDist(), s.phi, s.theta, 850);
+    }
+  } else if (mode === 'field') {
+    const s = cameraAngles();
+    flyTo(new THREE.Vector3(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]), Math.min(s.radius, 1.9), s.phi, s.theta, 900);
+    focus.travelling = true;
+  }
+}
+function releaseMate() {
+  if (sim.mate < 0) return;
+  const j = sim.mate;
+  W[j] = 1;
+  V[j * 3] = sim.mv[0]; V[j * 3 + 1] = sim.mv[1]; V[j * 3 + 2] = sim.mv[2];
+  sim.mate = -1;
+}
+function releaseHold() {
+  if (sim.hold < 0) return;
+  const i = sim.hold;
+  W[i] = 1;
+  V[i * 3] = sim.hv[0]; V[i * 3 + 1] = sim.hv[1]; V[i * 3 + 2] = sim.hv[2];
+  sim.hold = -1; sim.arrived = true;
+  stir();
+}
+function clearFocus(quiet) {
+  if (focus.id < 0) return;
+  releaseHold();
+  focus.id = -1;
+  focus.travelling = false;
+  tipHide(tips.focus);
+  if (!quiet && mode === 'field') { const s = cameraAngles(); flyTo(fieldTarget, fieldDist(), s.phi, s.theta, 900); }
+}
+function updateFocus(now) {
+  if (focus.id < 0) return;
+  if (focus.travelling) {
+    const arrived = mode === 'ball' ? (sim.hold === focus.id && Math.hypot(P[focus.id * 3] - sim.goal[0], P[focus.id * 3 + 1] - sim.goal[1], P[focus.id * 3 + 2] - sim.goal[2]) < R * 0.35) : !camMove;
+    if (arrived) { focus.travelling = false; focus.pulse = now; }
+  }
+  if (!modal.open && now >= focus.shownAt) tipShow(tips.focus, focus.id, false); else if (modal.open) tipHide(tips.focus);
+}
+
+/* ---------- the card ---------- */
+const card = $('#card'), cardShadow = $('#cardShadow'), skin = $('#cardSkin'), cardScroll = $('#cardScroll'), veil = $('#veil');
+function reasonFor(a, b) {
+  const A = items[a].e, B = items[b].e;
+  const shared = items[a].tags.filter(t => items[b].tags.includes(t)).map(tagShort);
+  let feel = '';
+  if (A.mood <= -0.25 && B.mood <= -0.25) feel = 'a similar hard morning';
+  else if (A.mood >= 0.45 && B.mood >= 0.45) feel = 'a similar bright morning';
+  else if (Math.abs(A.mood - B.mood) <= 0.25) feel = 'a similar mood';
+  else if (A.life >= 0.4 && B.life >= 0.4) feel = 'also about work';
+  else if (A.life <= -0.3 && B.life <= -0.3) feel = 'also personal';
+  else if (A.time >= 0.3 && B.time >= 0.3) feel = 'also looking back';
+  else if (A.time <= -0.3 && B.time <= -0.3) feel = 'also looking ahead';
+  if (shared.length) return 'Also about ' + listWords(shared.slice(0, 2)) + (feel ? ' · ' + feel : '');
+  return feel ? feel[0].toUpperCase() + feel.slice(1) : 'A morning close by';
+}
+function fillCard(i) {
+  const it = items[i], e = it.e;
+  card.style.setProperty('--c', it.css);
+  card.style.setProperty('--lite', it.lite);
+  card.style.setProperty('--deep', it.deep);
+  const img = $('#cardImg');
+  img.src = e.img || '';
+  img.alt = 'The painting for ' + fmtLong.format(it.date);
+  img.hidden = !e.img;
+  $('#cardWhen').textContent = fmtLong.format(it.date) + ' · ' + clockOf(it.date);
+  $('#cardTitle').textContent = it.theme || 'A morning';
+  $('#cardGist').textContent = e.gist || '';
+  const text = $('#cardText');
+  text.hidden = !(e.text && String(e.text).trim());
+  text.textContent = text.hidden ? '' : String(e.text);
+  const quote = $('#cardQuote');
+  const q = String(e.quote || '').trim().replace(/^["“”']+|["“”']+$/g, '');
+  quote.hidden = !q;
+  quote.textContent = q ? '“' + q + '”' : '';
+  chipList($('#cardChips'), it.tags);
+  let rel = nearest[i].filter(r => r.s >= 0.5).slice(0, 5);
+  if (rel.length < 3) rel = nearest[i].slice(0, 3);
+  $('#relList').replaceChildren(...rel.map(({ b }) => {
+    const other = items[b];
+    const li = el('li');
+    const btn = el('button', 'rel');
+    btn.type = 'button';
+    const th = el('img');
+    th.src = other.e.img || '';
+    th.alt = '';
+    th.loading = 'lazy';
+    const main = el('span', 'rel-main');
+    const top = el('span', 'rel-top');
+    top.append(el('span', 'rel-date', fmtRow.format(other.date)));
+    other.tags.forEach(k => top.append(el('span', 'chip', tagLabel(k))));
+    main.append(top, el('span', 'rel-why', reasonFor(i, b)));
+    btn.append(th, main);
+    btn.addEventListener('click', () => openModal(b));
+    talky(btn, 1.15);
+    li.append(btn);
+    return li;
+  }));
+}
+function orbOnScreen(i) {
+  const s = screenOf(i);
+  const off = s.behind || s.x < -40 || s.y < -40 || s.x > innerWidth + 40 || s.y > innerHeight + 40;
+  return off ? { x: innerWidth / 2, y: innerHeight / 2, r: 14 } : s;
+}
+// The card is placed and sized from here, so its frosted glass always grows and shrinks with its shape.
+const cardInner = $('#cardInner');
+let cardBox = null;                                   // where the open card rests: { x, y, w, h }
+function measureCard() {
+  const w = Math.min(600, innerWidth - 24);
+  cardInner.style.width = w + 'px';
+  cardInner.style.height = 'auto';
+  const h = Math.min(cardInner.offsetHeight, innerHeight - 32);
+  cardInner.style.height = h + 'px';
+  return { x: Math.round((innerWidth - w) / 2), y: Math.round((innerHeight - h) / 2), w, h };
+}
+const boxFrame = b => ({ left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px', borderRadius: '28px' });
+function orbFrame(o) {                                // a circle exactly where the orb sits on screen
+  const d = Math.max(12, o.r * 2);
+  return { left: (o.x - d / 2).toFixed(1) + 'px', top: (o.y - d / 2).toFixed(1) + 'px', width: d.toFixed(1) + 'px', height: d.toFixed(1) + 'px', borderRadius: '50%' };   // stays soft and round while it grows
+}
+function placeCard(b) { cardBox = b; Object.assign(card.style, boxFrame(b)); Object.assign(cardShadow.style, boxFrame(b)); }
+function stopCardAnims() {
+  modal.anims.forEach(a => a.cancel());
+  modal.anims = [];
+}
+function openModal(i) {
+  if (modal.closing) return;
+  if (modal.open) { if (modal.id !== i) switchCard(i); return; }
+  closeDrawer();
+  input.blur();
+  tipHide(tips.hover);
+  hover.id = -1;
+  if (focus.id >= 0 && focus.id !== i && mode === 'ball') focusOrb(i, true);
+  modal.open = true;
+  modal.id = i;
+  fillCard(i);
+  stopCardAnims();
+  const o = orbOnScreen(i);
+  Object.assign(card.style, orbFrame(o));
+  card.hidden = false;
+  cardShadow.hidden = false;
+  cardScroll.scrollTop = 0;
+  placeCard(measureCard());
+  const from = orbFrame(o), to = boxFrame(cardBox);
+  const dur = T(720);
+  modal.anims = [
+    // the orb grows into the card: a circle at the orb becomes the glass card in front
+    card.animate([{ ...from, opacity: 0 }, { opacity: 1, offset: 0.08 }, { ...to, opacity: 1 }], { duration: dur, easing: EASE }),
+    cardShadow.animate([{ ...from, opacity: 0 }, { opacity: 0, offset: 0.35 }, { ...to, opacity: 1 }], { duration: dur, easing: EASE }),
+    skin.animate([{ opacity: 1 }, { opacity: 1, offset: 0.2 }, { opacity: 0, offset: 0.8 }, { opacity: 0 }], { duration: dur, easing: 'linear' }),
+    cardInner.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5, easing: 'ease-out' }, { opacity: 1 }], { duration: dur, easing: 'linear' }),
+  ];
+  cardShadow.style.opacity = '1';
+  veil.classList.add('show');
+  tick('release', { pitch: 1.08, glide: 1, len: 1.8, level: 0.85, delay: 0.05, pan: panAt(o.x) * 0.6 });   // a soft rising "tu-ip"
+  setTimeout(() => { if (modal.open && !modal.closing) $('#cardX').focus({ preventScroll: true }); }, dur);
+}
+function switchCard(j) {
+  const prev = modal.id;
+  if (prev === j) return;
+  modal.id = j;
+  if (mode === 'ball' && !drone.active) focusOrb(j, true);
+  const out = cardInner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T(150), easing: 'ease-in', fill: 'forwards' });
+  out.finished.then(() => {
+    if (!modal.open || modal.closing || modal.id !== j) return;
+    fillCard(j);
+    cardScroll.scrollTop = 0;
+    const was = cardBox, next = measureCard();
+    placeCard(next);
+    card.animate([boxFrame(was), boxFrame(next)], { duration: T(320), easing: EASE });
+    cardShadow.animate([boxFrame(was), boxFrame(next)], { duration: T(320), easing: EASE });
+    out.cancel();
+    cardInner.animate([{ opacity: 0 }, { opacity: 1 }], { duration: T(280), easing: EASE });
+  }).catch(() => {});
+}
+function closeModal(how) {
+  if (!modal.open || modal.closing) return;
+  modal.closing = true;
+  const i = modal.id;
+  const o = orbOnScreen(i);
+  // start from exactly what is on screen now, even if the card is still growing, so nothing jumps
+  const cs = getComputedStyle(card);
+  const from = { left: cs.left, top: cs.top, width: cs.width, height: cs.height, borderRadius: cs.borderRadius }, to = orbFrame(o);
+  const look = { card: +cs.opacity, shadow: +getComputedStyle(cardShadow).opacity, skin: +getComputedStyle(skin).opacity, inner: +getComputedStyle(cardInner).opacity };
+  const dur = T(580);
+  modal.revealAt = performance.now() + dur * 0.5;     // the orb comes back as the card arrives
+  stopCardAnims();
+  const shrink = card.animate([{ ...from, opacity: look.card }, { opacity: 1, offset: 0.76 }, { ...to, opacity: 0 }], { duration: dur, easing: EASE, fill: 'forwards' });
+  modal.anims = [
+    shrink,
+    cardShadow.animate([{ ...from, opacity: look.shadow }, { opacity: 0, offset: 0.4 }, { ...to, opacity: 0 }], { duration: dur, easing: EASE, fill: 'forwards' }),
+    skin.animate([{ opacity: look.skin }, { opacity: look.skin * 0.5, offset: 0.25 }, { opacity: 0.92, offset: 0.72 }, { opacity: 0.92 }], { duration: dur, easing: 'linear', fill: 'forwards' }),
+    cardInner.animate([{ opacity: look.inner }, { opacity: 0, offset: 0.3 }, { opacity: 0 }], { duration: dur, easing: 'linear', fill: 'forwards' }),
+  ];
+  veil.classList.remove('show');
+  tick('press', { pitch: 1.0, glide: -1.4, len: 1.8, level: 0.8, pan: panAt(o.x) * 0.6 });               // and a falling "wup-tok"
+  if (drone.active) {
+    if (how === 'click' && !drone.fallback) lockPointer();        // a click lets us take the mouse again
+    else if (!drone.fallback) { drone.paused = true; showHint('Click to keep flying · Esc to stop', 0); }
+    drone.viaModal = false;
+  }
+  shrink.finished.then(() => {
+    stopCardAnims();
+    card.hidden = true;
+    cardShadow.hidden = true;
+    cardShadow.style.opacity = '';
+    modal.open = false;
+    modal.closing = false;
+    modal.id = -1;
+  }).catch(() => {});
+}
+$('#cardX').addEventListener('click', () => closeModal('click'));
+veil.addEventListener('click', () => closeModal('click'));
+
+/* ---------- explode and gather ---------- */
+const bar = $('#bar'), btnSpread = $('#btnSpread'), btnDrone = $('#btnDrone'), droneWrap = $('#droneWrap');
+const tweenSpeed = new Float64Array(N);
+function startTween(to, outward) {
+  tween.from.set(P);
+  tween.to.set(to);
+  tween.t0 = performance.now();
+  tween.dur = T(1000);
+  for (let i = 0; i < N; i++) {
+    const r = Math.hypot(P[i * 3] - C0[0], P[i * 3 + 1] - C0[1], P[i * 3 + 2] - C0[2]) / ballR;
+    const r2 = Math.hypot(to[i * 3] - C0[0], to[i * 3 + 1] - C0[1], to[i * 3 + 2] - C0[2]) / ballR;
+    // out: the outside leaves first. Back in: the middle lands first and the rest pour in on top
+    tween.delay[i] = T(outward ? (1 - clamp(r, 0, 1)) * 170 : clamp(r2, 0, 1) * 420 + items[i].phase * 90);
+    tweenSpeed[i] = Math.hypot(to[i * 3] - P[i * 3], to[i * 3 + 1] - P[i * 3 + 1], to[i * 3 + 2] - P[i * 3 + 2]) / (tween.dur / 1000);
+  }
+}
+const landing = (i, j) => 0.35 * (tweenSpeed[i] + tweenSpeed[j]) / 2;   // orbs settle softly as they land
+function updateTween(now) {
+  if (mode !== 'toField' && mode !== 'toBall') return;
+  P0.set(P);
+  let done = true, sum = 0;
+  for (let i = 0; i < N; i++) {
+    const t = clamp((now - tween.t0 - tween.delay[i]) / tween.dur, 0, 1);
+    if (t < 1) done = false;
+    const k = easeInOut(t);
+    sum += k;
+    for (let a = 0; a < 3; a++) P[i * 3 + a] = lerp(tween.from[i * 3 + a], tween.to[i * 3 + a], k);
+  }
+  if (listening) listenPairs(1 / 60, P0, P, null, landing);   // Gather sounds like a soft cascade of bowls
+  spread = mode === 'toField' ? sum / N : 1 - sum / N;
+  if (done) {
+    if (mode === 'toField') { mode = 'field'; spread = 1; }
+    else { mode = 'ball'; spread = 0; V.fill(0); sim.awake = false; sim.still = 0; home.set(origin); lockTouching(); }   // home again: already calm
+    setBar();
+  }
+}
+function explode() {
+  if (mode !== 'ball') return;
+  clearFocus(true);
+  releaseHold();
+  releaseMate();
+  sim.awake = false;
+  push.amt = push.goal = 0;
+  tipHide(tips.hover);
+  startTween(FP, true);
+  mode = 'toField';
+  const s = cameraAngles();
+  flyTo(fieldTarget, fieldDist(), Math.min(s.phi, 1.25), s.theta, 1150);
+  setBar();
+}
+function gather() {
+  if (mode !== 'field') return;
+  const wasFlying = drone.active;
+  if (wasFlying) leaveDrone(true);
+  clearFocus(true);
+  tipHide(tips.hover);
+  startTween(origin, false);         // back to the ball as it first formed, each orb in its own spot
+  mode = 'toBall';
+  if (wasFlying) {
+    const s = cameraAngles();
+    const pos = new THREE.Vector3().setFromSpherical(new THREE.Spherical(ballDist(), VIEW.phi, s.theta)).add(ballTarget);
+    flyPose(pos, ballTarget, 1150, () => { controls.enabled = true; });
+  } else {
+    const s = cameraAngles();
+    flyTo(ballTarget, ballDist(), s.phi, s.theta, 1150);
+  }
+  setBar();
+}
+function resetView() {
+  if (drone.active) { leaveDrone(); return; }
+  clearFocus(true);
+  const out = mode === 'field' || mode === 'toField';
+  flyTo(out ? fieldTarget : ballTarget, out ? fieldDist() : ballDist(), VIEW.phi, VIEW.theta, 950);
+}
+function setBar() {
+  const out = mode === 'field' || mode === 'toField';
+  bar.classList.toggle('out', out);
+  $('#spreadWord').textContent = out ? 'Gather' : 'Explode';
+  const canFly = mode === 'field' && !touchOnly.matches;
+  droneWrap.classList.toggle('show', canFly || drone.active);
+  btnDrone.tabIndex = canFly || drone.active ? 0 : -1;
+  $('#droneWord').textContent = drone.active ? 'Land' : 'Drone';
+}
+btnSpread.addEventListener('click', () => { if (mode === 'ball') explode(); else if (mode === 'field') gather(); });
+btnDrone.addEventListener('click', () => { if (drone.active) leaveDrone(); else enterDrone(); });
+$('#btnReset').addEventListener('click', resetView);
+
+/* ---------- drone: fly through the field ---------- */
+const drone = { active: false, locked: false, paused: false, fallback: false, viaModal: false, yaw: 0, pitch: 0, yawGoal: 0, pitchGoal: 0, vel: new THREE.Vector3(), keys: new Set(), look: -1 };
+const FLY_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space', 'ShiftLeft', 'ShiftRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const SPEED = 1.1;
+const hintEl = $('#hint');
+let hintTimer = 0;
+function showHint(text, ms) {
+  clearTimeout(hintTimer);
+  if (text) { hintEl.textContent = text; hintEl.classList.add('show'); } else hintEl.classList.remove('show');
+  if (text && ms) hintTimer = setTimeout(() => hintEl.classList.remove('show'), ms);
+}
+function enterDrone() {
+  if (drone.active || mode !== 'field' || touchOnly.matches) return;
+  clearFocus(true);
+  closeDrawer();
+  camMove = null;
+  zoomGoal = null;
+  drone.active = true;
+  controls.enabled = false;
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // Space flies up; it must never press a button
+  const e = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');   // start exactly where the camera is
+  drone.yaw = drone.yawGoal = e.y;
+  drone.pitch = drone.pitchGoal = e.x;
+  drone.vel.set(0, 0, 0);
+  drone.look = -1;
+  document.body.classList.add('flying');
+  showHint('Fly with W A S D · rise with E or Space, sink with Q or Shift · look with the mouse · Esc to stop', 6500);
+  lockPointer();
+  setBar();
+}
+function lockPointer() {
+  drone.paused = false;
+  try {
+    const p = canvas.requestPointerLock();
+    if (p && typeof p.catch === 'function') p.catch(() => fallbackLook());
+  } catch (err) { fallbackLook(); }
+}
+function fallbackLook() {
+  if (!drone.active || drone.locked || drone.fallback) return;
+  drone.fallback = true;
+  drone.paused = false;
+  showHint('Drag to look around · fly with W A S D · Esc to stop', 6500);
+}
+document.addEventListener('pointerlockchange', () => {
+  const locked = document.pointerLockElement === canvas;
+  drone.locked = locked;
+  document.body.classList.toggle('locked', locked);
+  if (locked) { drone.paused = false; drone.fallback = false; if (!hintEl.textContent.startsWith('Fly')) showHint('', 0); return; }
+  if (!drone.active || drone.viaModal || modal.open) return;   // we let go on purpose, to show a card
+  leaveDrone();                                                // Esc let go of the mouse: back to the orbit view
+});
+document.addEventListener('pointerlockerror', () => fallbackLook());
+function droneLook(e, dx, dy) {
+  const k = 0.0021;
+  if (drone.locked) { drone.yawGoal -= e.movementX * k; drone.pitchGoal -= e.movementY * k; }
+  else if (drone.fallback && pointer.down) { drone.yawGoal += dx * k * 1.2; drone.pitchGoal += dy * k * 1.2; }
+  drone.pitchGoal = clamp(drone.pitchGoal, -1.45, 1.45);
+}
+function droneClick() {
+  if (drone.paused) { lockPointer(); return; }
+  if (drone.look >= 0) {
+    if (drone.locked) { drone.viaModal = true; document.exitPointerLock(); }
+    openModal(drone.look);
+  } else if (!drone.locked && !drone.fallback) lockPointer();
+}
+function leaveDrone(quiet) {
+  if (!drone.active) return;
+  drone.active = false;
+  drone.keys.clear();
+  drone.paused = drone.fallback = drone.viaModal = false;
+  drone.look = -1;
+  if (document.pointerLockElement) document.exitPointerLock();
+  document.body.classList.remove('flying', 'locked');
+  showHint('', 0);
+  tipHide(tips.hover);
+  setBar();
+  if (quiet) return;
+  // ease back to the orbit view of the field, from wherever you flew
+  const dir = camera.position.clone().sub(fieldTarget);
+  if (dir.lengthSq() < 1e-6) dir.set(0, 0.35, 1);
+  dir.normalize();
+  if (dir.y < 0.15) { dir.y = 0.15; dir.normalize(); }
+  const pos = fieldTarget.clone().addScaledVector(dir, fieldDist());
+  flyPose(pos, fieldTarget, 1000, () => { controls.enabled = true; });
+}
+const _eul = new THREE.Euler(0, 0, 0, 'YXZ'), _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _want = new THREE.Vector3();
+function droneUpdate(dt) {
+  const k = 1 - Math.exp(-20 * dt);
+  drone.yaw += (drone.yawGoal - drone.yaw) * k;
+  drone.pitch += (drone.pitchGoal - drone.pitch) * k;
+  camera.quaternion.setFromEuler(_eul.set(drone.pitch, drone.yaw, 0, 'YXZ'));
+  const K = drone.keys, on = !drone.paused && !modal.open;
+  const has = (...c) => c.some(x => K.has(x));
+  const f = on ? (has('KeyW', 'ArrowUp') ? 1 : 0) - (has('KeyS', 'ArrowDown') ? 1 : 0) : 0;
+  const s = on ? (has('KeyD', 'ArrowRight') ? 1 : 0) - (has('KeyA', 'ArrowLeft') ? 1 : 0) : 0;
+  const u = on ? (has('KeyE', 'Space') ? 1 : 0) - (has('KeyQ', 'ShiftLeft', 'ShiftRight') ? 1 : 0) : 0;
+  _fwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
+  _right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+  _want.set(0, 0, 0).addScaledVector(_fwd, f).addScaledVector(_right, s);
+  if (_want.lengthSq() > 1) _want.normalize();
+  _want.multiplyScalar(SPEED);
+  _want.y += u * SPEED * 0.75;
+  drone.vel.lerp(_want, 1 - Math.exp(-3.2 * dt));     // smooth speeding up and slowing down
+  camera.position.addScaledVector(drone.vel, dt);
+  // stay near the field and above the floor, gently
+  const cp = camera.position, lim = [FX + 2.6, FY + 2.2, FZ + 2.6];
+  for (let a = 0; a < 3; a++) {
+    const c = fieldC[a], v = cp.getComponent(a);
+    if (Math.abs(v - c) > lim[a]) cp.setComponent(a, damp(v, c + Math.sign(v - c) * lim[a], 6, dt));
+  }
+  if (cp.y < floorY + 0.15) cp.y = damp(cp.y, floorY + 0.15, 8, dt);
+  // never fly inside an orb: slip around it instead
+  for (let i = 0; i < N; i++) {
+    _v.set(cp.x - P[i * 3], cp.y - P[i * 3 + 1], cp.z - P[i * 3 + 2]);
+    const d = _v.length(), min = R * 1.9;
+    if (d < min && d > 1e-6) cp.addScaledVector(_v, (min - d) / d * Math.min(1, 10 * dt));
+  }
+  // which orb sits under the little dot?
+  let best = -1, bestA = Infinity;
+  for (let i = 0; i < N; i++) {
+    _v.set(P[i * 3] - cp.x, P[i * 3 + 1] - cp.y, P[i * 3 + 2] - cp.z);
+    const t = _v.dot(_fwd);
+    if (t < R * 1.5 || t > 9) continue;
+    const m2 = Math.max(_v.lengthSq() - t * t, 0), tol = R * 1.35;   // (never a hair below zero when aimed dead centre)
+    if (m2 > tol * tol) continue;
+    const a = Math.sqrt(m2) / t;
+    if (a < bestA) { bestA = a; best = i; }
+  }
+  drone.look = best;
+  if (best >= 0 && !modal.open) tipShow(tips.hover, best, true); else tipHide(tips.hover);
+}
+
+/* ---------- keys ---------- */
+addEventListener('keydown', e => {
+  const typing = e.target === input;
+  if (e.key === 'Escape') {
+    e.preventDefault();             // Esc belongs to this page (headless Chrome otherwise stops drawing frames)
+    if (modal.open) { closeModal('key'); return; }
+    if (drone.active) { leaveDrone(); return; }
+    if (finder.classList.contains('open')) { closeDrawer(); return; }
+    if (focus.id >= 0) { clearFocus(); return; }
+    return;
+  }
+  if (typing) return;
+  if (drone.active && !modal.open && FLY_KEYS.has(e.code)) { drone.keys.add(e.code); e.preventDefault(); return; }
+  if (e.key === '/' && !modal.open && !drone.active) { e.preventDefault(); input.focus(); }
+});
+addEventListener('keyup', e => drone.keys.delete(e.code));
+addEventListener('blur', () => drone.keys.clear());
+
+/* ---------- size ---------- */
+const _px = new THREE.Vector2();
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  zoomLimits();
+  renderer.setPixelRatio(pixelRatio());
+  renderer.setSize(innerWidth, innerHeight, false);
+  orbMat.uniforms.uViewH.value = renderer.getDrawingBufferSize(_px).y;
+  if (modal.open && !modal.closing) placeCard(measureCard());
+}
+addEventListener('resize', onResize);
+touchOnly.addEventListener?.('change', setBar);
+
+/* ---------- colour key ---------- */
+document.documentElement.style.setProperty('--key',
+  'linear-gradient(90deg,' + Array.from({ length: 9 }, (_, k) => toCss(moodColor(-1 + k * 0.25)) + ' ' + (k * 12.5) + '%').join(',') + ')');
+
+/* ---------- the frame loop ---------- */
+let last = performance.now(), speedNow = 0;
+const prevP = new Float64Array(P);
+const watchers = [];
+function measure(dt) {
+  let m = 0;
+  for (let k = 0; k < N * 3; k += 3) m = Math.max(m, Math.hypot(P[k] - prevP[k], P[k + 1] - prevP[k + 1], P[k + 2] - prevP[k + 2]));
+  speedNow = dt > 0 ? m / dt : 0;
+  prevP.set(P);
+  for (const w of watchers) { w.max = Math.max(w.max, speedNow); w.frames++; }
+}
+let gapMax = 0, worldClock = 0;
+/* frame timing, only while the automated look-over asks for it: time between frames, script time, and
+   graphics-card time per frame (from the browser's GPU timer, where it has one) */
+const perf = { on: false, raf: [], cpu: [], gpu: [], pending: [], ext: null };
+function perfBegin() {
+  if (!perf.on || !perf.ext) return null;
+  const gl = renderer.getContext(), q = gl.createQuery();
+  gl.beginQuery(perf.ext.TIME_ELAPSED_EXT, q);
+  return q;
+}
+function perfEnd(q) {
+  if (!q && !perf.pending.length) return;
+  const gl = renderer.getContext();
+  if (q) { gl.endQuery(perf.ext.TIME_ELAPSED_EXT); perf.pending.push(q); }
+  while (perf.pending.length) {
+    const p = perf.pending[0];
+    if (!gl.getQueryParameter(p, gl.QUERY_RESULT_AVAILABLE)) break;
+    if (!gl.getParameter(perf.ext.GPU_DISJOINT_EXT)) perf.gpu.push(gl.getQueryParameter(p, gl.QUERY_RESULT) / 1e6);
+    gl.deleteQuery(p);
+    perf.pending.shift();
+  }
+}
+function frame(now) {
+  const cpuStart = performance.now(), frameStart = last;
+  const dt = clamp((now - last) / 1000, 0, 0.05);
+  gapMax = Math.max(gapMax, now - last);
+  last = now;
+  clock += dt;
+
+  // the camera
+  const idle = !calm && now - lastTouch > 6000 && !pointer.down && !modal.open && focus.id < 0 && !drone.active && !camMove && (mode === 'ball' || mode === 'field') && !finder.classList.contains('open');
+  spin = damp(spin, idle ? 0.3 : 0, idle ? 0.7 : 6, dt);
+  controls.autoRotate = spin > 0.002;
+  controls.autoRotateSpeed = spin;
+  if (!drone.active) {
+    if (zoomGoal != null && !camMove) {
+      _v.copy(camera.position).sub(controls.target);
+      const r = _v.length(), nr = damp(r, zoomGoal, 9, dt);
+      camera.position.copy(controls.target).addScaledVector(_v.normalize(), nr);
+      if (Math.abs(nr - zoomGoal) < 1e-4) zoomGoal = null;
+    }
+    controls.update(dt);
+  }
+  updateCamMove(now);
+  if (drone.active) droneUpdate(dt);
+  camera.updateMatrixWorld();
+
+  // the orbs
+  updateTween(now);
+  updatePush(dt, now);
+  if (mode === 'ball') advance(dt);
+  updateFocus(now);
+  updateLooks(dt, now);
+  writeInstances();
+  const streakGoal = mode === 'field' && !staged ? 1 : 0;
+  streakMat.uniforms.uAlpha.value = damp(streakMat.uniforms.uAlpha.value, streakGoal, streakGoal ? 1.8 : 7, dt);
+  streaks.visible = streakMat.uniforms.uAlpha.value > 0.003;
+  if (!calm) streakMat.uniforms.uTime.value += dt;
+  const pool = uPool.value, rect = uRect.value;
+  pool.x = lerp(C0[0], fieldTarget.x, spread);
+  pool.y = lerp(C0[2], fieldTarget.z, spread);
+  pool.z = lerp(ballR * 0.42, Math.max(FX, FZ) * 0.9, spread);
+  pool.w = lerp(0.07, 0.01, spread);
+  rect.set(pool.x, pool.y, lerp(ballR * 1.9, FX + 0.9, spread), lerp(ballR * 1.9, FZ + 0.9, spread));
+  floor.position.set(rect.x, floorY, rect.y);
+  floor.scale.set(rect.z, rect.w, 1);
+  // the worlds inside: slow and calm; with reduced motion they hold almost still
+  worldClock += dt * (calm ? 0.04 : 1);
+  orbMat.uniforms.uTime.value = worldClock;
+
+  // words on screen
+  updateHover(now);
+  placeTip(tips.hover);
+  placeTip(tips.focus);
+
+  const query = perfBegin();
+  renderer.setRenderTarget(shadowRT);
+  renderer.render(shadowScene, shadowCam);
+  renderer.setRenderTarget(null);
+  renderer.render(scene, camera);
+  perfEnd(query);
+  measure(dt);
+  if (perf.on) { perf.raf.push(now - frameStart); perf.cpu.push(performance.now() - cpuStart); }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- sounds on the controls ---------- */
+const btnSound = $('#btnSound');
+function setSound(on) {
+  sound.on = on;
+  try { localStorage.setItem('mood-orbs-sound', on ? 'on' : 'off'); } catch (err) { /* storage blocked: it just won't be remembered */ }
+  btnSound.setAttribute('aria-pressed', on ? 'true' : 'false');
+  $('#soundWord').textContent = on ? 'Sound on' : 'Sound off';
+  bar.classList.toggle('muted', !on);
+  if (sound.master) {
+    const g = sound.master.gain, t = sound.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(on ? loudness() : 0, t + (on ? 0.05 : 0.14));
+    if (!on) hush(sound.bowls, t);
+  }
+  if (on) tick('release', { pitch: 1.12, pan: panOf(btnSound) });
+}
+btnSound.addEventListener('click', () => setSound(!sound.on));
+setSound(sound.on);
+talky($('.pill'), 1.12);
+talky(btnSpread, 0.95);
+talky(btnDrone, 1.05);
+talky($('#btnReset'), 1);
+talky(btnSound, 1.1);
+talky($('#cardX'), 1, false);                     // its release is the card's closing sound
+
+orbMat.uniforms.uViewH.value = renderer.getDrawingBufferSize(_px).y;
+lockTouching();                    // orbs that touch when the page loads start quiet
+listening = true;
+streaks.visible = true;            // get every shader ready now, so the first Explode never stutters
+renderer.compile(scene, camera);
+streaks.visible = false;
+setBar();
+frame(performance.now());          // the very first frame already shows the whole, settled ball
+window.__orbsReady = true;
+
+/* for checking the page from outside (used by the automated look-over) */
+function kWeight(x) {                             // the standard loudness filter (ITU-R BS.1770), at 48 kHz
+  const y = new Float64Array(x.length);
+  const run = (src, b0, b1, b2, a1, a2) => {
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let n = 0; n < src.length; n++) {
+      const v = b0 * src[n] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      x2 = x1; x1 = src[n]; y2 = y1; y1 = v; y[n] = v;
+    }
+  };
+  run(x, 1.53512485958697, -2.69169618940638, 1.19839281085285, -1.69065929318241, 0.73248077421585);
+  run(y.slice(), 1, -2, 1, -1.99004745483398, 0.99007225036621);
+  return y;
+}
+function measureSound(buf) {                      // peak (dBFS) and loudness (LUFS)
+  const sr = buf.sampleRate, len = buf.length, chans = [];
+  let peak = 0;
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const x = buf.getChannelData(c);
+    for (let n = 0; n < len; n++) peak = Math.max(peak, Math.abs(x[n]));
+    chans.push(kWeight(x));
+  }
+  const sq = new Float64Array(len + 1);
+  for (let n = 0; n < len; n++) { let s = 0; for (const y of chans) s += y[n] * y[n]; sq[n + 1] = sq[n] + s; }
+  const L = z => -0.691 + 10 * Math.log10(Math.max(z, 1e-20));
+  const windowMax = secs => {
+    const w = Math.round(secs * sr), hop = Math.round(0.01 * sr);
+    let best = 0;
+    for (let s = 0; s + w <= len; s += hop) best = Math.max(best, (sq[s + w] - sq[s]) / w);
+    return L(best);
+  };
+  const w = Math.round(0.4 * sr), hop = Math.round(0.1 * sr), blocks = [];   // gated, as for a whole programme
+  for (let s = 0; s + w <= len; s += hop) blocks.push((sq[s + w] - sq[s]) / w);
+  const above = blocks.filter(z => L(z) > -70);
+  const mean = a => a.reduce((p, q) => p + q, 0) / a.length;
+  const rel = above.length ? L(mean(above)) - 10 : -70;
+  const gated = above.filter(z => L(z) > rel);
+  return {
+    peakDb: +(20 * Math.log10(Math.max(peak, 1e-20))).toFixed(2),
+    loudness: +windowMax(0.4).toFixed(2),         // momentary loudness at its loudest (LUFS)
+    fast: +windowMax(0.1).toFixed(2),             // the same over a tenth of a second
+    integrated: gated.length ? +L(mean(gated)).toFixed(2) : null,
+  };
+}
+window.moodOrbs = {
+  get state() { return { mode, focus: focus.id, modal: modal.open ? modal.id : -1, drone: drone.active, awake: sim.awake, fallback: drone.fallback, look: drone.look }; },
+  count: N,
+  indexOf: n => items.findIndex(it => it.n === n),
+  screenOf: i => { const s = screenOf(i); return { x: s.x, y: s.y, r: s.r }; },
+  still: ms => new Promise(res => { const w = { max: 0, frames: 0 }; watchers.push(w); setTimeout(() => { watchers.splice(watchers.indexOf(w), 1); res({ maxSpeed: w.max, frames: w.frames }); }, ms); }),
+  overlap: () => {
+    let worst = 0;
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+      const d = Math.hypot(P[i * 3] - P[j * 3], P[i * 3 + 1] - P[j * 3 + 1], P[i * 3 + 2] - P[j * 3 + 2]);
+      worst = Math.max(worst, (2 * R - d) / R);
+    }
+    return worst;
+  },
+  maxGap: () => { const g = gapMax; gapMax = 0; return Math.round(g); },   // longest wait between two frames, in ms
+  // how round the ball's outline is, seen from 60 directions: overall lumpiness (low), how far the outline's
+  // high points vary (envelope) and how deep the little dips between neighbouring orbs go (scallop), in ball radii
+  roundness: () => {
+    const rnd = seeded(7), views = 60;
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = 0; i < N; i++) { cx += P[i * 3] / N; cy += P[i * 3 + 1] / N; cz += P[i * 3 + 2] / N; }
+    let low = 0, lowWorst = 0, env = 0, scallop = 0;
+    for (let v = 0; v < views; v++) {
+      const u = rnd() * 2 - 1, ph = rnd() * Math.PI * 2, sn = Math.sqrt(1 - u * u);
+      const d = new THREE.Vector3(sn * Math.cos(ph), sn * Math.sin(ph), u);
+      const e1 = new THREE.Vector3().crossVectors(d, Math.abs(d.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+      const e2 = new THREE.Vector3().crossVectors(d, e1);
+      const pts = [];
+      for (let i = 0; i < N; i++) { _v.set(P[i * 3] - cx, P[i * 3 + 1] - cy, P[i * 3 + 2] - cz); pts.push([_v.dot(e1), _v.dot(e2)]); }
+      const r = [];
+      for (let k = 0; k < 360; k++) {
+        const al = k / 360 * Math.PI * 2, ux = Math.cos(al), uy = Math.sin(al);
+        let o = 0;
+        for (const [x, y] of pts) { const along = x * ux + y * uy, off = -x * uy + y * ux; if (Math.abs(off) <= R) o = Math.max(o, along + Math.sqrt(R * R - off * off)); }
+        r.push(o);
+      }
+      const mean = r.reduce((a, b) => a + b, 0) / 360;
+      let lo = 0;
+      for (let hh = 1; hh <= 4; hh++) { let c = 0, sn2 = 0; for (let k = 0; k < 360; k++) { const al = k / 360 * Math.PI * 2; c += r[k] * Math.cos(hh * al); sn2 += r[k] * Math.sin(hh * al); } lo += 2 * Math.hypot(c, sn2) / 360; }
+      lo /= mean;
+      const top = r.map((_, k) => { let m = 0; for (let j = -12; j <= 12; j++) m = Math.max(m, r[(k + j + 360) % 360]); return m; });
+      low += lo / views; lowWorst = Math.max(lowWorst, lo);
+      env = Math.max(env, (Math.max(...top) - Math.min(...top)) / mean);
+      scallop += Math.max(...r.map((x, k) => (top[k] - x) / mean)) / views;
+    }
+    const f = x => +x.toFixed(3);
+    return { low: f(low), lowWorst: f(lowWorst), envelope: f(env), scallop: f(scallop), ballRadius: f(ballR) };
+  },
+  // frame timing over a stretch of ms: time between frames, script time per frame, graphics-card time per frame
+  frameTime: ms => new Promise(res => {
+    perf.ext = perf.ext || renderer.getContext().getExtension('EXT_disjoint_timer_query_webgl2');
+    perf.raf = []; perf.cpu = []; perf.gpu = []; perf.on = true;
+    setTimeout(() => {
+      perf.on = false;
+      const stat = a => { const q = a.slice().sort((x, y) => x - y); return q.length ? { mean: +(q.reduce((x, y) => x + y, 0) / q.length).toFixed(2), p95: +q[Math.floor(q.length * 0.95)].toFixed(2), max: +q[q.length - 1].toFixed(2), n: q.length } : null; };
+      const gl = renderer.getContext(), info = gl.getExtension('WEBGL_debug_renderer_info');
+      res({ between: stat(perf.raf), script: stat(perf.cpu), gpu: stat(perf.gpu), canvas: [renderer.domElement.width, renderer.domElement.height], card: info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'unknown' });
+    }, ms);
+  }),
+  bench: (n = 30) => {
+    const gl = renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2'), px = new Uint8Array(4);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);                 // start from an idle card
+    const q = ext ? gl.createQuery() : null, t0 = performance.now();
+    if (q) gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
+    for (let k = 0; k < n; k++) { renderer.setRenderTarget(shadowRT); renderer.render(shadowScene, shadowCam); renderer.setRenderTarget(null); renderer.render(scene, camera); }
+    if (q) gl.endQuery(ext.TIME_ELAPSED_EXT);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);                 // wait until it is done
+    const wall = +((performance.now() - t0) / n).toFixed(2);
+    return new Promise(res => {
+      const poll = () => {
+        if (!q) return res({ wall });
+        if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) return requestAnimationFrame(poll);
+        const ns = gl.getQueryParameter(q, gl.QUERY_RESULT);
+        gl.deleteQuery(q);
+        res({ wall, gpu: +(ns / 1e6 / n).toFixed(2) });
+      };
+      poll();
+    });
+  },
+  // Over a full slow turn of the view: how often two orbs swap drawing order while they overlap on screen (each
+  // such swap would show as a pop). The order used here should give none; plain depth order (as before) is shown too.
+  sortCheck: (steps = 720) => {
+    const s0 = cameraAngles(), cam = new THREE.Vector3(), fwd = new THREE.Vector3();
+    const power = new Float64Array(N), plain = new Float64Array(N);
+    const rankOf = key => { const o = Array.from({ length: N }, (_, i) => i).sort((a, b) => key[b] - key[a] || a - b), r = new Int32Array(N); o.forEach((i, k) => { r[i] = k; }); return r; };
+    const overlap = (a, b) => {
+      const ax = P[a * 3] - cam.x, ay = P[a * 3 + 1] - cam.y, az = P[a * 3 + 2] - cam.z, bx = P[b * 3] - cam.x, by = P[b * 3 + 1] - cam.y, bz = P[b * 3 + 2] - cam.z;
+      const da = Math.hypot(ax, ay, az), db = Math.hypot(bx, by, bz);
+      const apart = Math.acos(clamp((ax * bx + ay * by + az * bz) / (da * db), -1, 1));
+      return apart < (Math.asin(Math.min(1, R / da)) + Math.asin(Math.min(1, R / db))) * 0.99;
+    };
+    let lastP = null, lastD = null;
+    const out = { swaps: 0, pops: 0, plainSwaps: 0, plainPops: 0, steps };
+    for (let k = 0; k <= steps; k++) {
+      cam.setFromSpherical(new THREE.Spherical(s0.radius, s0.phi, s0.theta + k / steps * Math.PI * 2)).add(controls.target);
+      fwd.copy(controls.target).sub(cam).normalize();
+      for (let i = 0; i < N; i++) {
+        const dx = P[i * 3] - cam.x, dy = P[i * 3 + 1] - cam.y, dz = P[i * 3 + 2] - cam.z;
+        power[i] = dx * dx + dy * dy + dz * dz - R * R;
+        plain[i] = dx * fwd.x + dy * fwd.y + dz * fwd.z;
+      }
+      const rP = rankOf(power), rD = rankOf(plain);
+      if (lastP) for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+        if ((lastP[i] < lastP[j]) !== (rP[i] < rP[j])) { out.swaps++; if (overlap(i, j)) out.pops++; }
+        if ((lastD[i] < lastD[j]) !== (rD[i] < rD[j])) { out.plainSwaps++; if (overlap(i, j)) out.plainPops++; }
+      }
+      lastP = rP; lastD = rD;
+    }
+    return out;
+  },
+  layers: o => { for (const [k, m] of Object.entries({ orbs, halos, floor })) if (k in o) m.visible = !!o[k]; },   // show or hide parts, to time them
+  view: (radius, phi, theta) => {   // place the orbit camera
+    camMove = null; zoomGoal = null;
+    camera.position.setFromSpherical(new THREE.Spherical(radius, phi, theta)).add(controls.target);
+    camera.lookAt(controls.target);
+    controls.update();
+  },
+  // For the close-up picture only: in the exploded view, set a few mornings side by side in front of the
+  // camera (others fade away) so their worlds can be compared. Call with no list to end it.
+  lineup: (ns, gap = 2.9) => {
+    if (!ns) {                      // end it: everyone back to their places in the field
+      if (staged && mode === 'field') staged.forEach(i => { for (let a = 0; a < 3; a++) P[i * 3 + a] = FP[i * 3 + a]; });
+      staged = null;
+      return;
+    }
+    if (mode !== 'field') return 'explode first';
+    const ids = ns.map(n => items.findIndex(it => it.n === n));
+    staged = new Set(ids);
+    const fwd = new THREE.Vector3(), right = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    right.crossVectors(fwd, camera.up).normalize();
+    const mid = controls.target.clone();
+    ids.forEach((i, k) => { const off = (k - (ids.length - 1) / 2) * gap * R; for (let a = 0; a < 3; a++) P[i * 3 + a] = mid.getComponent(a) + right.getComponent(a) * off; });
+    ids.forEach(i => { items[i].fade.x = 1; });
+    return ids.map(i => ({ n: items[i].n, mood: items[i].e.mood, intensity: items[i].e.intensity, life: items[i].e.life, time: items[i].e.time }));
+  },
+  drift: () => {                    // how far the orbs are from home (in orb radii), and how many pairs are locked quiet
+    let far = 0, locked = 0;
+    for (let i = 0; i < N; i++) far = Math.max(far, Math.hypot(P[i * 3] - home[i * 3], P[i * 3 + 1] - home[i * 3 + 1], P[i * 3 + 2] - home[i * 3 + 2]) / R);
+    for (let k = 0; k < pairLock.length; k++) locked += pairLock[k];
+    return { far: +far.toFixed(3), locked };
+  },
+  aim: i => {                       // point the drone at one orb
+    if (!(i >= 0)) return;
+    _v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).sub(camera.position).normalize();
+    drone.yawGoal = drone.yaw = Math.atan2(-_v.x, -_v.z);
+    drone.pitchGoal = drone.pitch = Math.asin(clamp(_v.y, -1, 1));
+  },
+  moveTo: (x, y, z) => camera.position.set(x, y, z),
+  where: i => [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]],
+  get sound() {
+    const B = sound.bowls, now = sound.ctx ? sound.ctx.currentTime : 0;
+    return {
+      state: sound.ctx ? sound.ctx.state : 'not started', on: sound.on, contacts: sound.contacts, played: sound.played,
+      dropped: B ? B.dropped : 0, ringing: B ? B.voices.filter(x => x.ring && x.ring.end > now && x.ring.fade > now).length : 0,
+      level: sound.master ? +sound.master.gain.value.toFixed(3) : null,
+    };
+  },
+  get camera() { return camera.position.toArray().map(v => +v.toFixed(4)); },
+  // the orb-to-orb touches heard since the last call ({ t, k, bright, v, pan }), to replay offline; the first call starts the log
+  touches: () => { const l = sound.log || []; sound.log = []; return l; },
+  // play touches into an OfflineAudioContext through the very same pool, bowls and room, at this page's master level
+  // with sound on, and measure them: peak, loudness, how many sounded, the busiest 100 ms and the most bowls ringing at once
+  renderBowl: async (touches, opts = {}) => {
+    const list = touches.slice().sort((a, b) => a.t - b.t), t0 = list.length ? list[0].t : 0;
+    const sr = 48000, secs = (list.length ? list[list.length - 1].t - t0 : 0) + (opts.tail ?? 6);
+    const ctx = new OfflineAudioContext(2, Math.ceil(sr * secs), sr), master = ctx.createGain();
+    master.gain.value = loudness();
+    master.connect(ctx.destination);
+    const B = makeBowls(ctx, master), rnd = seeded(opts.seed ?? 7), rings = [], starts = [];
+    for (const x of list) {
+      const t = 0.05 + x.t - t0, r = bowl(B, x, x.v, x.pan, t, rnd);
+      if (r) { rings.push(r); starts.push(t); }
+    }
+    const buf = await ctx.startRendering();
+    let busiest = 0, most = 0;
+    for (const s of starts) busiest = Math.max(busiest, starts.filter(q => q > s - 0.1 && q <= s).length);
+    for (const q of rings) most = Math.max(most, rings.filter(r => r.t <= q.t && Math.min(r.fade, r.t + 4) > q.t).length);
+    return {
+      ...measureSound(buf), touches: list.length, played: rings.length, dropped: B.dropped, faded: rings.filter(r => r.fade < Infinity).length,
+      busiest100ms: busiest, mostAtOnce: most, seconds: +secs.toFixed(2), onsets: rings.map(r => +r.t.toFixed(3)),
+    };
+  },
+  // render one tick offline and measure it: peak, loudness (rms), length and brightness (a rough centre pitch)
+  renderSound: async (kind, opts = {}) => {
+    const sr = 48000, ctx = new OfflineAudioContext(1, Math.floor(sr * 0.25), sr), noise = makeNoise(ctx);
+    voiceTick(ctx, ctx.destination, 0.01, noise, { kind, jitter: 0, ...opts });
+    const x = (await ctx.startRendering()).getChannelData(0);
+    let peak = 0, e = 0, ed = 0, lastLoud = 0;
+    for (let k = 0; k < x.length; k++) {
+      const a = Math.abs(x[k]);
+      peak = Math.max(peak, a);
+      e += x[k] * x[k];
+      if (k) ed += (x[k] - x[k - 1]) ** 2;
+      if (a > 0.003) lastLoud = k;
+    }
+    return { peak, rms: Math.sqrt(e / x.length), ms: Math.round((lastLoud / sr - 0.01) * 1000), brightness: Math.round(sr / (2 * Math.PI) * Math.sqrt(ed / Math.max(e, 1e-12))) };
+  },
+};
+</script>
+</body>
+</html>

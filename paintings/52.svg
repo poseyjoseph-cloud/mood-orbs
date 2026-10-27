@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dde6b6"/><stop offset="1" stop-color="#e9eccf"/></linearGradient>
+<filter id="wash" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="52"/><feDisplacementMap in="SourceGraphic" scale="60"/><feGaussianBlur stdDeviation="19"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="55"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0.09 0"/></filter>
+</defs>
+<rect width="640" height="360" fill="url(#sky)"/>
+
+<g filter="url(#wash)"><ellipse cx="249" cy="133" rx="157" ry="76" fill="#acc14e" opacity="0.40"/><ellipse cx="231" cy="109" rx="153" ry="71" fill="#b1ba52" opacity="0.40"/><ellipse cx="577" cy="34" rx="169" ry="96" fill="#7ac36a" opacity="0.40"/><ellipse cx="599" cy="86" rx="168" ry="70" fill="#cdda95" opacity="0.40"/><ellipse cx="199" cy="104" rx="148" ry="47" fill="#acc14e" opacity="0.40"/><ellipse cx="506" cy="49" rx="91" ry="50" fill="#b1ba52" opacity="0.40"/><ellipse cx="498" cy="74" rx="145" ry="60" fill="#7ac36a" opacity="0.40"/></g>
+<g filter="url(#wash)"><polygon points="-20,380 -20,205 50,205 120,198 190,184 260,201 330,195 400,177 470,205 540,200 610,200 680,200 680,380" fill="#727e41" opacity="0.55"/><polygon points="-20,380 -20,207 50,213 120,215 190,210 260,229 330,211 400,211 470,212 540,219 610,208 680,207 680,380" fill="#859046" opacity="0.70"/><polygon points="-20,380 -20,272 50,258 120,266 190,277 260,255 330,255 400,275 470,272 540,252 610,277 680,271 680,380" fill="#98a24b" opacity="0.85"/></g>
+<rect width="640" height="360" filter="url(#paper)"/>
+</svg>
