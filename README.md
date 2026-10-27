@@ -50,7 +50,7 @@ Nothing to install. It's a web page that opens in your browser.
 3. Find the file in your Downloads folder and unzip it:
    - **Mac:** double-click the ZIP file.
    - **Windows:** right-click the ZIP file and choose **Extract All**.
-4. Open the new **mood-orbs** folder and double-click **`mood-orbs.html`**.
+4. Open the new **mood-orbs-main** folder and double-click **`mood-orbs.html`**.
 
 It opens in your web browser. You need to be **online** while it loads, because it fetches one free 3D drawing tool from the internet (more on that in [Is it safe to open?](#is-it-safe-to-open)).
 
